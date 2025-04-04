@@ -71,6 +71,13 @@ export async function getEventBySlug(slug: string) {
 		where: {
 			slug,
 		},
+		include: {
+			eventUsers: {
+				include: {
+					user: true,
+				},
+			},
+		},
 	});
 	return event;
 }
