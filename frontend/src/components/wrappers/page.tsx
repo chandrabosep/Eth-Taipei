@@ -4,7 +4,7 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import React from "react";
 import { http, createConfig } from "@wagmi/core";
 import { baseSepolia, mainnet, base } from "@wagmi/core/chains";
-
+import Nav from "../common/nav";
 export const wagmiConfig = createConfig({
 	chains: [baseSepolia, mainnet, base],
 	transports: {
@@ -30,6 +30,7 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
 					},
 				}}
 			>
+				<Nav />
 				{children}
 			</PrivyProvider>
 		</>

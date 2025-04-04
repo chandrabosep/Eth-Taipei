@@ -22,7 +22,7 @@ model Event {
   updatedAt   DateTime    @updatedAt
   
   // Relations
-  creatorId   String
+  creatorAddress   String
   eventUsers  EventUser[]
 }
 
