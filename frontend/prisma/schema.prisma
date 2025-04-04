@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Event model
+model Event {
+  id          String      @id @default(uuid())
+  name        String
+  slug        String      @unique
+  description String?     @db.Text
+  startDate   DateTime
+  endDate     DateTime
+  pictureUrl  String?
+  tags        String[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  creatorId   String
+  eventUsers  EventUser[]
+}
+
+// User model
+model User {
+  id        String      @id
+  name      String?
+  country   String?
+  address   String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  
+  // Relations
+  eventUsers EventUser[]
+}
+
+// EventUser model - represents a user's profile for a specific event
+model EventUser {
+  id         String       @id @default(uuid())
+  status     UserStatus   @default(PENDING)
+  tags       String[]
+  socials    Json?        // Store social media links
+  bio        String?      @db.Text
+  qrCode     String?      // QR code for scanning
+  meetingPreferences String[] // Criteria for who they want to meet
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  
+  // Relations
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  eventId    String
+  event      Event        @relation(fields: [eventId], references: [id])
+  sentRequests     Connection[] @relation("SentRequests")
+  receivedRequests Connection[] @relation("ReceivedRequests")
+  assignedQuests   UserQuest[]  // Quests assigned to this event user
+  
+  @@unique([userId, eventId])
+}
+
+// Connection model - represents connections between users at an event
+model Connection {
+  id               String         @id @default(uuid())
+  status           ConnectionStatus @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  
+  // Relations
+  senderId         String
+  sender           EventUser      @relation("SentRequests", fields: [senderId], references: [id])
+  receiverId       String
+  receiver         EventUser      @relation("ReceivedRequests", fields: [receiverId], references: [id])
+  
+  @@unique([senderId, receiverId])
+}
+
+// Quest model - represents challenges for users
+model Quest {
+  id          String      @id @default(uuid())
+  title       String
+  description String      @db.Text
+  points      Int
+  tags        String[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  userQuests  UserQuest[] // Users assigned to this quest
+}
+
+// UserQuest model - tracks quests assigned to users and their completion status
+model UserQuest {
+  id          String    @id @default(uuid())
+  status      QuestStatus @default(ASSIGNED)
+  assignedAt  DateTime  @default(now())
+  completedAt DateTime?
+  
+  // Relations
+  questId     String
+  quest       Quest     @relation(fields: [questId], references: [id])
+  eventUserId String
+  eventUser   EventUser @relation(fields: [eventUserId], references: [id])
+  
+  @@unique([questId, eventUserId])
+}
+
+// Leaderboard model - tracks user rankings for events
+model Leaderboard {
+  id         String   @id @default(uuid())
+  eventId    String   @unique
+  rankings   Json     // Stores user rankings with scores
+  updatedAt  DateTime @updatedAt
+}
+
+// Agent model - for the AI agent that generates and assigns quests
+model Agent {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Enums
+enum UserStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum QuestStatus {
+  ASSIGNED
+  COMPLETED
+  VERIFIED
+  FAILED
+}
+
+
