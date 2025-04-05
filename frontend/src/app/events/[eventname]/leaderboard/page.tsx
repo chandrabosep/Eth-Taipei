@@ -41,14 +41,17 @@ export default function LeaderboardPage() {
   useEffect(() => {
     const getData = async() => {
       try {
-        // Use a specific address to test
-        const testAddress = '0xB822B51A88E8a03fCe0220B15Cb2C662E42Adec1';
+        // Check if user wallet is connected
+        if (!user?.wallet?.address) {
+          console.log("No wallet connected");
+          return;
+        }
         
         const contractData = await publicClient.readContract({
           address: "0x723733980ce3881d2c9421E3A76bB61636E47c1e", 
           abi: wagmiAbi, 
           functionName: "getGlobalXP", 
-          args: [testAddress as `0x${string}`]
+          args: [user.wallet.address as `0x${string}`]
         });
         
         console.log("XP for test address:", contractData);
@@ -57,7 +60,7 @@ export default function LeaderboardPage() {
         const updatedLeaderboard = [
           { 
             id: 1, 
-            address: testAddress, 
+            address: user.wallet.address, 
             connectionsMade: 15, 
             xp: Number(contractData) || 0 
           }
@@ -69,8 +72,11 @@ export default function LeaderboardPage() {
       }
     };
     
-    getData();
-  }, []);
+    // Only run when user is available
+    if (user?.wallet?.address) {
+      getData();
+    }
+  }, [user?.wallet?.address]); // Add user wallet to dependency array
 
   
   return (

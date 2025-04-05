@@ -24,7 +24,7 @@ export const networks = {
         blockExplorers: {
             default: { name: 'Celo Explorer', url: 'https://explorer.celo.org' },
         },
-        contractAddress: '0x61edDE0E4B97D878C14F5f5706309d4572550Afa',
+        contractAddress: '0x723733980ce3881d2c9421E3A76bB61636E47c1e',
         testnet: false,
     },
     baseSepolia: {

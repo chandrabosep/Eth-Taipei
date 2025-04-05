@@ -22,6 +22,16 @@ import {
 } from "@/actions/connections.action";
 import { useToast } from "@/hooks/use-toast";
 
+import {wagmiAbi} from '@/app/create-event/abi'
+import {publicClient, getWalletClient, chainConfig  ,walletClient} from '@/app/create-event/config'
+import { parseGwei } from 'viem'
+import { createPublicClient , http } from 'viem'
+import { celo } from "viem/chains";
+
+
+
+
+
 interface Connection {
 	id: string;
 	address: string;
@@ -52,6 +62,52 @@ export default function InteractionsPage() {
 	);
 	const [isLoadingRecent, setIsLoadingRecent] = useState(false);
 	const { toast } = useToast();
+
+
+	const [data, setData] = useState<any[]>([]);
+
+	useEffect(() => {
+	  const getData = async() => {
+		try {
+		  // Check if user wallet is connected
+		  if (!user?.wallet?.address) {
+			console.log("No wallet connected");
+			return;
+		  }
+		  
+		  // Use the connected wallet address
+		  const contractData = await publicClient.readContract({
+			address: "0x723733980ce3881d2c9421E3A76bB61636E47c1e", 
+			abi: wagmiAbi, 
+			functionName: "connectWithUser", 
+			args: [user.wallet.address as `0x${string}`]
+		  });
+		  
+		  console.log("XP for user address:", contractData);
+		  
+		  // Update the data with the fetched XP
+		  // You'll need to define updatedLeaderboard based on your needs
+		  const updatedLeaderboard = [
+			{ 
+			  id: 1, 
+			  address: user.wallet.address, 
+			  connectionsMade: 15, 
+			  xp: Number(contractData) || 0 
+			}
+		  ];
+		  
+		  setData(updatedLeaderboard);
+		} catch (error) {
+		  console.error("Error fetching XP data:", error);
+		}
+	  };
+	  
+	  // Only run when user changes
+	  if (user?.wallet?.address) {
+		getData();
+	  }
+	}, [user?.wallet?.address]);
+  
 
 	useEffect(() => {
 		const checkRegistration = async () => {
@@ -153,10 +209,11 @@ export default function InteractionsPage() {
 		}
 	}, [event?.id, user?.wallet?.address, isRegistered]);
 
-	const handleAcceptRequest = async (id: string) => {
+	const handleAcceptRequest = async (id: string, otherUserAddress: string) => {
 		if (!event?.id) return;
 
 		try {
+			// First update the connection status in your database
 			const result = await updateConnectionStatus({
 				connectionId: id,
 				status: "ACCEPTED",
@@ -164,11 +221,58 @@ export default function InteractionsPage() {
 			});
 
 			if (result.success) {
-				toast({
-					title: "Success",
-					description: "Connection request accepted!",
-					variant: "default",
-				});
+				// Now call the smart contract to record the connection on-chain
+				try {
+					// Check if user wallet is connected
+					if (!user?.wallet?.address) {
+						console.log("No wallet connected");
+						toast({
+							title: "Error",
+							description: "Wallet not connected",
+							variant: "destructive",
+						});
+						return;
+					}
+
+					// Create a wallet client for the transaction
+					const chain = celo; // Using Celo instead of Base Sepolia
+					const walletClient = createWalletClient({
+						chain,
+						transport: custom(window.ethereum)
+					});
+
+					// Prepare the transaction
+					const { request } = await publicClient.simulateContract({
+						address: "0x723733980ce3881d2c9421E3A76bB61636E47c1e",
+						abi: wagmiAbi,
+						functionName: "connectWithUser",
+						args: [otherUserAddress as `0x${string}`],
+						account: user.wallet.address as `0x${string}`
+					});
+
+					// Execute the transaction
+					const hash = await walletClient.writeContract(request);
+					
+					// Wait for transaction confirmation
+					const receipt = await publicClient.waitForTransactionReceipt({hash});
+					
+					console.log("Connection recorded on-chain:", receipt);
+					
+					toast({
+						title: "Success",
+						description: "Connection request accepted and recorded on-chain!",
+						variant: "default",
+					});
+				} catch (error) {
+					console.error("Error recording connection on-chain:", error);
+					toast({
+						title: "Warning",
+						description: "Connection accepted but failed to record on-chain. Try again later.",
+						variant: "destructive",
+					});
+				}
+				
+				// Refresh the UI
 				fetchPendingRequests();
 				fetchRecentConnections();
 			} else {
@@ -328,9 +432,10 @@ export default function InteractionsPage() {
 													truncateAddress={
 														truncateAddress
 													}
-													onAccept={() =>
+													onAccept={(otherUserAddress) =>
 														handleAcceptRequest(
-															connection.id
+															connection.id,
+															otherUserAddress
 														)
 													}
 													onReject={() =>
