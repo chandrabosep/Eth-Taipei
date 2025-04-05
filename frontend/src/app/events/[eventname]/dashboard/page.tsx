@@ -538,6 +538,9 @@ export default function DashboardPage() {
 	const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 	const [isOrganizerModalOpen, setIsOrganizerModalOpen] = useState(false);
 	const [approvingUser, setApprovingUser] = useState<string | null>(null);
+	const [assigningQuests, setAssigningQuests] = useState(false);
+	const [questCount, setQuestCount] = useState(3);
+	const [showQuestCountModal, setShowQuestCountModal] = useState(false);
 
 	const getStatusDisplay = (status: EventUser["status"]) => {
 		if (status === "ACCEPTED") return "Approved";
@@ -838,7 +841,11 @@ export default function DashboardPage() {
 
 	const handleRandomAssignment = async () => {
 		try {
-			const result = await randomlyAssignQuestsToUsers(eventData.id);
+			setAssigningQuests(true);
+			const result = await randomlyAssignQuestsToUsers(
+				eventData.id,
+				questCount
+			);
 			if (result.success && result.data) {
 				// Update the UI to reflect new assignments
 				setEventData((prev) => {
@@ -884,6 +891,9 @@ export default function DashboardPage() {
 				description: "Failed to assign quests",
 				variant: "destructive",
 			});
+		} finally {
+			setAssigningQuests(false);
+			setShowQuestCountModal(false);
 		}
 	};
 
@@ -959,46 +969,55 @@ export default function DashboardPage() {
 						</div>
 					</div>
 
-					<div className="flex justify-between items-center">
-						{/* Quest Generation Alert */}
-						{eventData.eventUsers.length > 0 &&
-							questsCompleted === 0 && (
-								<div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-8 rounded-r-lg">
-									<div className="flex items-start">
-										<div className="flex-shrink-0">
-											<SparklesIcon
-												className="h-5 w-5 text-amber-400"
-												aria-hidden="true"
-											/>
-										</div>
-										<div className="ml-3">
-											<h3 className="text-sm font-medium text-amber-800">
-												Quests needed
-											</h3>
-											<div className="mt-2 text-sm text-amber-700">
-												<p>
-													No quests have been
-													generated yet. Use the
-													"Randomly Assign Quests"
-													button below to create
-													quests for your attendees.
-												</p>
-											</div>
+					{questsCompleted === 0 && (
+						<div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+							<div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 md:mb-8 rounded-r-lg flex-grow">
+								<div className="flex items-start">
+									<div className="flex-shrink-0">
+										<SparklesIcon
+											className="h-5 w-5 text-amber-400"
+											aria-hidden="true"
+										/>
+									</div>
+									<div className="ml-3">
+										<h3 className="text-sm font-medium text-amber-800">
+											Quests Management
+										</h3>
+										<div className="mt-2 text-sm text-amber-700">
+											<p>
+												No quests have been assigned to
+												attendees yet. As an organizer,
+												you can use the "Randomly Assign
+												Quests" button to automatically
+												create networking quests for all
+												approved attendees.
+											</p>
 										</div>
 									</div>
 								</div>
-							)}
-						<div className="max-w-7xl mx-auto px-8 pb-12 flex justify-end">
-							<Button
-								variant="outline"
-								onClick={handleRandomAssignment}
-								className="bg-[#6b8e50] text-white hover:bg-[#5a7a42] border-[#5a7a42]"
-							>
-								<Shuffle className="w-4 h-4 mr-2" />
-								Randomly Assign Quests
-							</Button>
+							</div>
+
+							<div className="flex justify-end">
+								<Button
+									variant="outline"
+									onClick={() => setShowQuestCountModal(true)}
+									className="bg-[#6b8e50] text-white hover:bg-[#5a7a42] border-[#5a7a42]"
+								>
+									{assigningQuests ? (
+										<>
+											<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+											Assigning...
+										</>
+									) : (
+										<>
+											<Shuffle className="w-4 h-4 mr-2" />
+											Randomly Assign Quests
+										</>
+									)}
+								</Button>
+							</div>
 						</div>
-					</div>
+					)}
 
 					{/* Key Metrics */}
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-12">
@@ -1458,6 +1477,62 @@ export default function DashboardPage() {
 				onClose={() => setIsOrganizerModalOpen(false)}
 				onSubmit={handleAddOrganizer}
 			/>
+
+			{/* Quest Count Modal */}
+			{showQuestCountModal && (
+				<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+					<div className="bg-[#f8f5e6] rounded-xl p-6 w-full max-w-md">
+						<div className="flex justify-between items-center mb-4">
+							<h3 className="text-xl font-medium text-[#5a3e2b]">
+								Number of Quests
+							</h3>
+							<button
+								onClick={() => setShowQuestCountModal(false)}
+								className="text-[#5a3e2b]/60 hover:text-[#5a3e2b]"
+							>
+								✕
+							</button>
+						</div>
+						<div className="mb-6">
+							<label className="block text-sm text-[#5a3e2b] mb-2">
+								How many quests should be assigned to each user?
+							</label>
+							<input
+								type="number"
+								value={questCount}
+								onChange={(e) =>
+									setQuestCount(
+										Math.max(
+											1,
+											parseInt(e.target.value) || 3
+										)
+									)
+								}
+								min="1"
+								className="w-full px-3 py-2 border-2 border-[#b89d65] rounded-lg bg-white
+									focus:outline-none focus:border-[#8c7851]"
+							/>
+						</div>
+						<div className="flex justify-end gap-3">
+							<button
+								onClick={() => setShowQuestCountModal(false)}
+								className="px-4 py-2 text-[#5a3e2b] hover:bg-[#f0e6c0] rounded-lg"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleRandomAssignment}
+								disabled={assigningQuests}
+								className="px-4 py-2 bg-[#b89d65] hover:bg-[#a08a55] text-white rounded-lg disabled:opacity-50"
+							>
+								{assigningQuests
+									? "Assigning..."
+									: "Assign Quests"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 
 			<Toaster />
 		</div>
