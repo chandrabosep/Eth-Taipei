@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { generateQuestsForUser } from "./quest";
 
 interface UpdateEventData {
 	id: string;
@@ -295,6 +296,20 @@ export async function updateUserStatus(
 				status,
 			},
 		});
+
+		// If user is accepted, generate quests
+		if (status === "ACCEPTED") {
+			const questResult = await generateQuestsForUser({
+				eventUserId: updatedEventUser.id,
+				eventId: eventId,
+				questCount: 3, // Default to 3 quests per user
+			});
+
+			if (!questResult.success) {
+				console.error("Failed to generate quests:", questResult.error);
+				// Continue with the flow even if quest generation fails
+			}
+		}
 
 		return { success: true, data: updatedEventUser };
 	} catch (error) {

@@ -132,7 +132,7 @@ export default function CreateEvent() {
 			});
 
 			if (createdEvent) {
-				router.push(`/events/${createdEvent.slug}`);
+				router.push(`/events/${createdEvent.slug}/dashboard`);
 			} else {
 				throw new Error(
 					"Failed to create event. No response received."
