@@ -22,7 +22,9 @@ import {
 	sendConnectionRequest,
 	getPendingRequests,
 	updateConnectionStatus,
+	getRecentConnections,
 } from "@/actions/connections.action";
+import { useToast } from "@/hooks/use-toast";
 
 interface Connection {
 	id: string;
@@ -32,7 +34,7 @@ interface Connection {
 	status: "accepted" | "pending" | "rejected";
 	timestamp: string;
 	xpEarned?: number;
-	type: "sent" | "received";
+	type?: "sent" | "received";
 }
 
 interface ConnectionRequestDialogProps {
@@ -102,6 +104,11 @@ export default function page() {
 	const eventSlug = params.eventname as string;
 	const [pendingRequests, setPendingRequests] = useState<Connection[]>([]);
 	const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+	const [recentConnections, setRecentConnections] = useState<Connection[]>(
+		[]
+	);
+	const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+	const { toast } = useToast();
 
 	useEffect(() => {
 		const checkRegistration = async () => {
@@ -169,10 +176,37 @@ export default function page() {
 		}
 	};
 
-	// Add effect to fetch pending requests when event or user changes
+	// Add function to fetch recent connections
+	const fetchRecentConnections = async () => {
+		if (!user?.wallet?.address || !event?.id) return;
+
+		try {
+			setIsLoadingRecent(true);
+			const result = await getRecentConnections({
+				userId: user.wallet.address,
+				eventId: event.id,
+			});
+
+			if (result.success && result.data) {
+				setRecentConnections(result.data as Connection[]);
+			} else {
+				console.error(
+					"Failed to fetch recent connections:",
+					result.error
+				);
+			}
+		} catch (error) {
+			console.error("Error fetching recent connections:", error);
+		} finally {
+			setIsLoadingRecent(false);
+		}
+	};
+
+	// Update effect to fetch both pending and recent connections
 	useEffect(() => {
 		if (event?.id && user?.wallet?.address && isRegistered) {
 			fetchPendingRequests();
+			fetchRecentConnections();
 		}
 	}, [event?.id, user?.wallet?.address, isRegistered]);
 
@@ -249,14 +283,40 @@ export default function page() {
 
 			if (!result.success) {
 				setError(result.error || "Failed to send connection request");
+				toast({
+					title: "Error",
+					description:
+						result.error || "Failed to send connection request",
+					variant: "destructive",
+				});
+
+				if (result.closeDialog) {
+					setShowRequestDialog(false);
+					setScannedData(null);
+				}
+
 				return;
 			}
 
+			toast({
+				title: "Success",
+				description: "Connection request sent successfully!",
+				variant: "default",
+			});
+
 			setShowRequestDialog(false);
 			setScannedData(null);
+
+			// Refresh pending requests to show the new sent request
+			fetchPendingRequests();
 		} catch (error) {
 			console.error("Error sending connection request:", error);
 			setError("Failed to send connection request");
+			toast({
+				title: "Error",
+				description: "Failed to send connection request",
+				variant: "destructive",
+			});
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -292,11 +352,6 @@ export default function page() {
 	return (
 		<div>
 			<div className="w-full h-full flex flex-col items-center pt-20">
-				{error && (
-					<div className="mb-4 p-4 bg-red-100 text-red-600 rounded-lg">
-						{error}
-					</div>
-				)}
 				<Tabs defaultValue="qr" className="mb-8">
 					<TabsList className="flex">
 						<TabsTrigger
@@ -456,6 +511,39 @@ export default function page() {
 												/>
 											))}
 									</div>
+								</div>
+							</div>
+						)}
+
+						{/* Recent Connections Section */}
+						{(isLoadingRecent || recentConnections.length > 0) && (
+							<div className="overflow-hidden mb-8">
+								<div className="">
+									<div className="flex items-center gap-2 mb-4 sm:mb-6">
+										<UserPlusIcon className="w-6 h-6 text-[#6b8e50]" />
+										<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
+											Recent Connections
+										</h2>
+									</div>
+									{isLoadingRecent ? (
+										<div className="w-full flex justify-center py-8">
+											<Loader2Icon className="h-8 w-8 animate-spin text-[#5a3e2b]" />
+										</div>
+									) : (
+										<div className="space-y-4 sm:space-y-6">
+											{recentConnections.map(
+												(connection) => (
+													<ConnectionCard
+														key={connection.id}
+														connection={connection}
+														truncateAddress={
+															truncateAddress
+														}
+													/>
+												)
+											)}
+										</div>
+									)}
 								</div>
 							</div>
 						)}

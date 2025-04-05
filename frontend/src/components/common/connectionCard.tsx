@@ -99,7 +99,7 @@ export const ConnectionCard = ({
 					</div>
 				)}
 
-				<div className="flex items-center text-xs text-[#5a3e2b]/60">
+				<div className="flex items-center text-xs text-[#5a3e2b]/60 mt-2">
 					<ClockIcon className="w-3 h-3 mr-1" />
 					{new Date(connection.timestamp).toLocaleString()}
 

@@ -27,6 +27,8 @@ export async function sendConnectionRequest({
 			return {
 				success: false,
 				error: "Receiver is not registered for this event",
+				showToast: true,
+				closeDialog: true,
 			};
 		}
 
@@ -42,6 +44,8 @@ export async function sendConnectionRequest({
 			return {
 				success: false,
 				error: "You are not registered for this event",
+				showToast: true,
+				closeDialog: true,
 			};
 		}
 
@@ -65,6 +69,8 @@ export async function sendConnectionRequest({
 			return {
 				success: false,
 				error: "Connection already exists",
+				showToast: true,
+				closeDialog: true,
 			};
 		}
 
@@ -78,12 +84,20 @@ export async function sendConnectionRequest({
 		});
 
 		revalidatePath(`/events/${eventId}`);
-		return { success: true, data: connection };
+		return { 
+			success: true, 
+			data: connection,
+			message: "Connection request sent successfully",
+			showToast: true,
+			closeDialog: true,
+		};
 	} catch (error) {
 		console.error("Failed to send connection request:", error);
 		return {
 			success: false,
 			error: "Failed to send connection request",
+			showToast: true,
+			closeDialog: true,
 		};
 	}
 }
@@ -108,6 +122,7 @@ export async function getPendingRequests({
 			return {
 				success: false,
 				error: "User not found in this event",
+				showToast: true,
 			};
 		}
 
@@ -158,12 +173,17 @@ export async function getPendingRequests({
 			};
 		});
 
-		return { success: true, data: formattedRequests };
+		return { 
+			success: true, 
+			data: formattedRequests,
+			showToast: false,
+		};
 	} catch (error) {
 		console.error("Failed to fetch pending requests:", error);
 		return {
 			success: false,
 			error: "Failed to fetch pending requests",
+			showToast: true,
 		};
 	}
 }
@@ -188,12 +208,109 @@ export async function updateConnectionStatus({
 		});
 
 		revalidatePath(`/events/${eventId}`);
-		return { success: true, data: connection };
+		return { 
+			success: true, 
+			data: connection,
+			message: status === "ACCEPTED" ? "Connection accepted" : "Connection rejected",
+			showToast: true,
+		};
 	} catch (error) {
 		console.error("Failed to update connection status:", error);
 		return {
 			success: false,
 			error: "Failed to update connection status",
+			showToast: true,
+		};
+	}
+}
+
+export async function getRecentConnections({
+	userId,
+	eventId,
+	limit = 5,
+}: {
+	userId: string;
+	eventId: string;
+	limit?: number;
+}) {
+	try {
+		// Find the user's EventUser record
+		const eventUser = await prisma.eventUser.findFirst({
+			where: {
+				userId: userId,
+				eventId: eventId,
+			},
+		});
+
+		if (!eventUser) {
+			return {
+				success: false,
+				error: "User not found in this event",
+				showToast: true,
+			};
+		}
+
+		// Get recent accepted connections where this user is either the sender or receiver
+		const recentConnections = await prisma.connection.findMany({
+			where: {
+				OR: [
+					{
+						receiverId: eventUser.id,
+						status: "ACCEPTED",
+					},
+					{
+						senderId: eventUser.id,
+						status: "ACCEPTED",
+					},
+				],
+			},
+			include: {
+				sender: {
+					include: {
+						user: true,
+					},
+				},
+				receiver: {
+					include: {
+						user: true,
+					},
+				},
+			},
+			orderBy: {
+				updatedAt: "desc",
+			},
+			take: limit,
+		});
+
+		// Transform the data to match the Connection interface
+		const formattedConnections = recentConnections.map((connection) => {
+			const isSender = connection.senderId === eventUser.id;
+			const otherUser = isSender
+				? connection.receiver
+				: connection.sender;
+
+			return {
+				id: connection.id,
+				address: otherUser.user.address,
+				name: otherUser.user.name || "Anonymous",
+				matchedInterests: otherUser.tags || [],
+				status: "accepted" as const,
+				timestamp: connection.updatedAt.toISOString(),
+				xpEarned: 50, // Placeholder XP value
+			};
+		});
+
+		return { 
+			success: true, 
+			data: formattedConnections,
+			showToast: false,
+		};
+	} catch (error) {
+		console.error("Failed to fetch recent connections:", error);
+		return {
+			success: false,
+			error: "Failed to fetch recent connections",
+			showToast: true,
 		};
 	}
 }

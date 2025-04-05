@@ -7,6 +7,7 @@ import { baseSepolia, mainnet, base } from "@wagmi/core/chains";
 import Nav from "../common/nav";
 import BottomNav from "../common/bottomNav";
 import { usePathname } from "next/navigation";
+import { Toaster } from "../ui/toaster";
 
 export const wagmiConfig = createConfig({
 	chains: [baseSepolia, mainnet, base],
@@ -52,6 +53,7 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
 					<Nav />
 					<main className="flex-1 overflow-y-auto pb-16 md:pb-0">
 						{children}
+						<Toaster />
 					</main>
 					{isEventRoute && eventName && (
 						<BottomNav eventName={eventName} />
