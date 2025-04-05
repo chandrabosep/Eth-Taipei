@@ -2,13 +2,10 @@
 
 import React, { useState, useRef } from "react";
 import { format } from "date-fns";
-import {
-	createEvent,
-	getEvents,
-	getEventBySlug,
-} from "@/actions/events.action";
+import { createEvent } from "@/actions/events.action";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
+import { uploadToPinata } from "@/utils/pinata";
 
 interface FormData {
 	eventName: string;
@@ -72,21 +69,25 @@ export default function CreateEvent() {
 				),
 			};
 
-			// In a real app, you would upload the image to a storage service
-			// and get back a URL to store in the database
-			let pictureUrl = "";
-			if (imagePreview) {
-				// This is a placeholder. In production, you'd upload to a service like S3
-				pictureUrl = imagePreview;
-			}
-
 			// Get the user's wallet address
 			const walletAddress = user?.wallet?.address;
-
 			if (!walletAddress) {
 				throw new Error(
 					"No wallet address found. Please connect your wallet."
 				);
+			}
+
+			// Upload image to Pinata if provided
+			let pictureUrl = "";
+			if (formData.eventImage) {
+				try {
+					console.log("Uploading image to Pinata...");
+					pictureUrl = await uploadToPinata(formData.eventImage);
+					console.log("Image uploaded successfully:", pictureUrl);
+				} catch (error) {
+					console.error("Error uploading image:", error);
+					throw new Error("Failed to upload event image");
+				}
 			}
 
 			// Make sure we have at least one feature
@@ -107,11 +108,17 @@ export default function CreateEvent() {
 			if (createdEvent) {
 				router.push(`/events/${createdEvent.slug}`);
 			} else {
-				throw new Error("Failed to create event. No response received.");
+				throw new Error(
+					"Failed to create event. No response received."
+				);
 			}
 		} catch (error) {
 			console.error("Failed to create event:", error);
-			alert(`Failed to create event: ${error instanceof Error ? error.message : "Unknown error"}`);
+			alert(
+				`Failed to create event: ${
+					error instanceof Error ? error.message : "Unknown error"
+				}`
+			);
 		} finally {
 			setIsSubmitting(false);
 		}

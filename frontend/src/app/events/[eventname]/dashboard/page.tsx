@@ -33,6 +33,7 @@ interface EventUser {
 interface EventData {
 	name: string;
 	image?: string;
+	pictureUrl?: string | null;
 	startDate: Date;
 	eventUsers: EventUser[];
 	creatorAddress: string;
@@ -370,21 +371,26 @@ export default function DashboardPage() {
 	return (
 		<div className="min-h-screen bg-[#f8f5e6]">
 			{/* Hero Section */}
-			<div className="relative h-40 sm:h-64 bg-[#f0e6c0] border-b-2 border-[#b89d65]">
-				<img
-					src={
-						eventData.image ||
-						"https://placehold.co/1200x400/f0e6c0/5a3e2b"
-					}
-					alt={eventData.name}
-					className="w-full h-full object-cover opacity-50"
-				/>
+			<div className="relative h-64 bg-[#f0e6c0] border-b-2 border-[#b89d65]">
+				{eventData.pictureUrl ? (
+					<img
+						src={eventData.pictureUrl}
+						alt={eventData.name}
+						className="w-full h-full object-cover"
+					/>
+				) : (
+					<div className="w-full h-full bg-[#f0e6c0] flex items-center justify-center">
+						<span className="text-[#5a3e2b]/50 text-lg">
+							No event image
+						</span>
+					</div>
+				)}
 				<div className="absolute inset-0 bg-gradient-to-t from-[#f8f5e6] to-transparent" />
-				<div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-8 right-4 sm:right-8">
-					<h1 className="text-2xl sm:text-4xl md:text-5xl font-serif text-[#5a3e2b] break-words">
+				<div className="absolute bottom-8 left-8 right-8">
+					<h1 className="text-4xl md:text-5xl font-serif text-[#5a3e2b]">
 						{eventData.name}
 					</h1>
-					<p className="text-[#5a3e2b]/80 mt-2 text-sm sm:text-base">
+					<p className="text-[#5a3e2b]/80 mt-2">
 						{new Date(eventData.startDate).toLocaleDateString(
 							"en-US",
 							{
@@ -397,25 +403,38 @@ export default function DashboardPage() {
 				</div>
 			</div>
 
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
+			<div className="max-w-7xl mx-auto px-8 py-12">
 				{/* Share Event Section */}
-				<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-6 border-2 border-[#b89d65] mb-6 sm:mb-12">
-					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-						<div>
-							<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
-								Share Event
-							</h2>
-							<p className="text-[#5a3e2b]/60 text-sm sm:text-base">
-								Invite more people to join your event
-							</p>
-							<p className="text-[#5a3e2b] mt-2 text-xs sm:text-sm break-all">
-								Registration link:{" "}
-								<span className="font-mono">{`${window.location.origin}/events/${eventData?.slug}/register`}</span>
-							</p>
+				<div className="bg-[#f0e6c0] rounded-xl p-6 border-2 border-[#b89d65] mb-12">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-6">
+							<div className="w-24 h-24 rounded-lg overflow-hidden bg-[#f8f5e6] border-2 border-[#b89d65]">
+								{eventData.pictureUrl ? (
+									<img
+										src={eventData.pictureUrl}
+										alt={eventData.name}
+										className="w-full h-full object-cover"
+									/>
+								) : (
+									<div className="w-full h-full flex items-center justify-center">
+										<span className="text-[#5a3e2b]/50 text-sm">
+											No image
+										</span>
+									</div>
+								)}
+							</div>
+							<div>
+								<h2 className="text-2xl font-serif text-[#5a3e2b]">
+									Share Event
+								</h2>
+								<p className="text-[#5a3e2b]/60">
+									Invite more people to join your event
+								</p>
+							</div>
 						</div>
 						<button
 							onClick={copyEventLink}
-							className="flex items-center gap-2 bg-[#6b8e50] text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-[#5a7a42] transition-colors w-full sm:w-auto justify-center"
+							className="flex items-center gap-2 bg-[#6b8e50] text-white px-6 py-3 rounded-lg hover:bg-[#5a7a42] transition-colors"
 						>
 							{copySuccess ? (
 								<>
@@ -436,25 +455,33 @@ export default function DashboardPage() {
 				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-12">
 					{[
 						{
-							icon: <UsersIcon className="w-6 h-6 sm:w-8 sm:h-8" />,
+							icon: (
+								<UsersIcon className="w-6 h-6 sm:w-8 sm:h-8" />
+							),
 							label: "Total Attendees",
 							value: totalAttendees,
 							color: "bg-[#6b8e50]",
 						},
 						{
-							icon: <SparklesIcon className="w-6 h-6 sm:w-8 sm:h-8" />,
+							icon: (
+								<SparklesIcon className="w-6 h-6 sm:w-8 sm:h-8" />
+							),
 							label: "Total XP Earned",
 							value: totalXP.toLocaleString(),
 							color: "bg-[#b89d65]",
 						},
 						{
-							icon: <UsersIcon className="w-6 h-6 sm:w-8 sm:h-8" />,
+							icon: (
+								<UsersIcon className="w-6 h-6 sm:w-8 sm:h-8" />
+							),
 							label: "Avg. Connections",
 							value: averageConnections,
 							color: "bg-[#8c7851]",
 						},
 						{
-							icon: <TrophyIcon className="w-6 h-6 sm:w-8 sm:h-8" />,
+							icon: (
+								<TrophyIcon className="w-6 h-6 sm:w-8 sm:h-8" />
+							),
 							label: "Quests Completed",
 							value: questsCompleted,
 							color: "bg-[#5a7a42]",
@@ -478,7 +505,9 @@ export default function DashboardPage() {
 							<p className="text-2xl sm:text-4xl font-bold text-[#5a3e2b] mb-1 sm:mb-2">
 								{metric.value}
 							</p>
-							<p className="text-sm sm:text-base text-[#5a3e2b]/60">{metric.label}</p>
+							<p className="text-sm sm:text-base text-[#5a3e2b]/60">
+								{metric.label}
+							</p>
 						</div>
 					))}
 				</div>
@@ -588,11 +617,21 @@ export default function DashboardPage() {
 							<table className="min-w-full">
 								<thead>
 									<tr className="text-left text-[#5a3e2b]/60">
-										<th className="pb-3 sm:pb-4 pl-4 sm:pl-0 pr-2 sm:pr-4 text-xs sm:text-sm">Name</th>
-										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">Wallet</th>
-										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">Status</th>
-										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">Registered</th>
-										<th className="pb-3 sm:pb-4 pl-2 sm:pl-4 pr-4 sm:pr-0 text-xs sm:text-sm">Actions</th>
+										<th className="pb-3 sm:pb-4 pl-4 sm:pl-0 pr-2 sm:pr-4 text-xs sm:text-sm">
+											Name
+										</th>
+										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">
+											Wallet
+										</th>
+										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">
+											Status
+										</th>
+										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">
+											Registered
+										</th>
+										<th className="pb-3 sm:pb-4 pl-2 sm:pl-4 pr-4 sm:pr-0 text-xs sm:text-sm">
+											Actions
+										</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -605,13 +644,15 @@ export default function DashboardPage() {
 												{user.user.name || "Anonymous"}
 											</td>
 											<td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm text-[#5a3e2b] font-mono">
-												{user.user.address.slice(0, 4)}...
+												{user.user.address.slice(0, 4)}
+												...
 												{user.user.address.slice(-4)}
 											</td>
 											<td className="py-3 sm:py-4 px-2 sm:px-4">
 												<span
 													className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${
-														user.status === "ACCEPTED"
+														user.status ===
+														"ACCEPTED"
 															? "bg-green-100 text-green-800"
 															: user.status ===
 															  "REJECTED"
@@ -619,7 +660,9 @@ export default function DashboardPage() {
 															: "bg-yellow-100 text-yellow-800"
 													}`}
 												>
-													{getStatusDisplay(user.status)}
+													{getStatusDisplay(
+														user.status
+													)}
 												</span>
 											</td>
 											<td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm text-[#5a3e2b]/60 hidden sm:table-cell">

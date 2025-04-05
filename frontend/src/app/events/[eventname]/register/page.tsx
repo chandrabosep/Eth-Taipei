@@ -42,7 +42,7 @@ export default function RegisterPage() {
 					return;
 				}
 				setEvent(eventData);
-				
+
 				if (user?.wallet?.address && eventData.eventUsers) {
 					const isRegistered = eventData.eventUsers.some(
 						(eu: any) => eu.userId === user.wallet?.address
@@ -195,7 +195,7 @@ export default function RegisterPage() {
 	// Show loading state while Privy is initializing
 	if (!ready) {
 		return (
-			<div className="min-h-screen bg-[#f8f5e6] flex items-center justify-center">
+			<div className="min-h-screen bg-[#f8f5e6] flex items-center justify-center p-4">
 				<div className="text-[#5a3e2b]">
 					Initializing wallet connection...
 				</div>
@@ -203,42 +203,27 @@ export default function RegisterPage() {
 		);
 	}
 
-	// If user is not connected, show login prompt
 	if (!user?.wallet?.address) {
 		return (
-			<div className="min-h-screen bg-[#f8f5e6] p-8">
-				<div className="max-w-2xl mx-auto bg-[#f0e6c0] rounded-xl shadow-lg p-6 border-2 border-[#b89d65] text-center">
-					<h1 className="text-3xl font-serif text-[#5a3e2b] mb-4">
-						Connect Wallet to Register
-					</h1>
-					<p className="text-[#5a3e2b] mb-6">
-						Please connect your wallet to register for this event.
-					</p>
-					<div className="flex justify-center">
-						<PrivyLoginButton />
-					</div>
+			<div className="min-h-screen bg-[#f8f5e6] flex flex-col items-center justify-center gap-6 p-4">
+				<div className="text-[#5a3e2b] text-xl text-center">
+					Please connect your wallet to register for this event
 				</div>
+				<PrivyLoginButton />
 			</div>
 		);
 	}
 
 	if (isAlreadyRegistered) {
 		return (
-			<div className="min-h-screen bg-[#f8f5e6] p-8">
-				<div className="max-w-2xl mx-auto bg-[#f0e6c0] rounded-xl shadow-lg p-6 border-2 border-[#b89d65] text-center">
-					<h1 className="text-3xl font-serif text-[#5a3e2b] mb-4">
-						Already Registered
-					</h1>
-					<p className="text-[#5a3e2b] mb-6">
-						You have already registered for this event.
-					</p>
+			<div className="min-h-screen bg-[#f8f5e6] flex items-center justify-center p-4">
+				<div className="text-[#5a3e2b] text-xl">
+					You are already registered for this event.{" "}
 					<button
 						onClick={() => router.push(`/events/${eventSlug}`)}
-						className="bg-[#b89d65] hover:bg-[#a08a55] text-[#f8f5e6] 
-								font-medium py-3 px-6 rounded-lg border-2 border-[#8c7851] 
-								transition-colors focus:outline-none focus:ring-2 focus:ring-[#b89d65]"
+						className="text-[#6b8e50] hover:underline"
 					>
-						Go to Event Page
+						Return to event page
 					</button>
 				</div>
 			</div>
@@ -246,264 +231,297 @@ export default function RegisterPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-[#f8f5e6] p-8">
-			<div className="max-w-2xl mx-auto bg-[#f0e6c0] rounded-xl shadow-lg p-6 border-2 border-[#b89d65]">
-				<h1 className="text-3xl font-serif text-[#5a3e2b] mb-8">
-					Register for Event
-				</h1>
-
-				<form onSubmit={handleSubmit} className="space-y-6">
-					{/* Name Input */}
-					<div>
-						<label
-							htmlFor="name"
-							className="block text-[#5a3e2b] font-medium mb-2"
-						>
-							Your Name
-						</label>
-						<input
-							type="text"
-							id="name"
-							value={formData.name}
-							onChange={(e) =>
-								setFormData((prev) => ({
-									...prev,
-									name: e.target.value,
-								}))
-							}
-							className="w-full px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6]/50 
-									 text-[#5a3e2b] placeholder-[#5a3e2b]/50 focus:outline-none 
-									 focus:border-[#b89d65] transition-colors"
-							placeholder="Enter your name"
-							required
-						/>
+		<div className="min-h-screen bg-[#f8f5e6]">
+			{/* Hero Section */}
+			<div className="relative h-64 bg-[#f0e6c0] border-b-2 border-[#b89d65]">
+				{event?.pictureUrl ? (
+					<img
+						src={event.pictureUrl}
+						alt={event.name}
+						className="w-full h-full object-cover"
+					/>
+				) : (
+					<div className="w-full h-full bg-[#f0e6c0] flex items-center justify-center">
+						<span className="text-[#5a3e2b]/50 text-lg">
+							No event image
+						</span>
 					</div>
+				)}
+				<div className="absolute inset-0 bg-gradient-to-t from-[#f8f5e6] to-transparent" />
+				<div className="absolute bottom-8 left-8 right-8">
+					<h1 className="text-4xl md:text-5xl font-serif text-[#5a3e2b]">
+						{event?.name}
+					</h1>
+					<p className="text-[#5a3e2b]/80 mt-2">
+						{event?.startDate &&
+							new Date(event.startDate).toLocaleDateString(
+								"en-US",
+								{
+									day: "numeric",
+									month: "long",
+									year: "numeric",
+								}
+							)}
+					</p>
+				</div>
+			</div>
 
-					{/* Bio Input */}
-					<div>
-						<label
-							htmlFor="bio"
-							className="block text-[#5a3e2b] font-medium mb-2"
-						>
-							Bio
-						</label>
-						<textarea
-							id="bio"
-							value={formData.bio}
-							onChange={(e) =>
-								setFormData((prev) => ({
-									...prev,
-									bio: e.target.value,
-								}))
-							}
-							className="w-full px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6]/50 
-									 text-[#5a3e2b] placeholder-[#5a3e2b]/50 focus:outline-none 
-									 focus:border-[#b89d65] transition-colors min-h-[100px]"
-							placeholder="Tell us about yourself..."
-							required
-						/>
-					</div>
+			<div className="max-w-3xl mx-auto px-8 py-12">
+				{/* Event Description */}
+				<div className="mb-8 bg-[#f0e6c0] rounded-xl p-6 border-2 border-[#b89d65]">
+					<h2 className="text-2xl font-serif text-[#5a3e2b] mb-3">
+						About This Event
+					</h2>
+					<p className="text-[#5a3e2b]/80 whitespace-pre-line">
+						{event?.description || "No description available."}
+					</p>
+				</div>
 
-					{/* Country Input */}
-					<div>
-						<label
-							htmlFor="country"
-							className="block text-[#5a3e2b] font-medium mb-2"
-						>
-							Country
-						</label>
-						<input
-							type="text"
-							id="country"
-							value={formData.country}
-							onChange={(e) =>
-								setFormData((prev) => ({
-									...prev,
-									country: e.target.value,
-								}))
-							}
-							className="w-full px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6]/50 
-									 text-[#5a3e2b] placeholder-[#5a3e2b]/50 focus:outline-none 
-									 focus:border-[#b89d65] transition-colors"
-							placeholder="Enter your country"
-							required
-						/>
-					</div>
+				<div className="bg-[#f0e6c0] rounded-xl p-6 sm:p-8 border-2 border-[#b89d65] shadow-md">
+					<h2 className="text-2xl font-serif text-[#5a3e2b] mb-6">
+						Register for Event
+					</h2>
 
-					{/* Social Profiles */}
-					<div>
-						<label className="block text-[#5a3e2b] font-medium mb-2">
-							Social Profiles{" "}
-							<span className="text-sm text-[#5a3e2b]/60">
-								(at least one required)
-							</span>
-						</label>
-						<div className="space-y-3">
-							{[
-								{
-									platform: "twitter",
-									label: "Twitter",
-									placeholder: "@username",
-								},
-								{
-									platform: "linkedin",
-									label: "LinkedIn",
-									placeholder: "Profile URL",
-								},
-								{
-									platform: "github",
-									label: "GitHub",
-									placeholder: "@username",
-								},
-								{
-									platform: "telegram",
-									label: "Telegram",
-									placeholder: "@username",
-								},
-							].map(({ platform, label, placeholder }) => (
-								<div
-									key={platform}
-									className="flex items-center gap-2"
+					<form onSubmit={handleSubmit} className="space-y-8">
+						{/* Basic Information */}
+						<div>
+							<h3 className="text-lg font-medium text-[#5a3e2b] border-b border-[#b89d65]/30 pb-2 mb-4">
+								Basic Information
+							</h3>
+							<div className="space-y-4">
+								<div>
+									<label
+										htmlFor="name"
+										className="block text-sm font-medium text-[#5a3e2b] mb-1"
+									>
+										Name
+									</label>
+									<input
+										type="text"
+										id="name"
+										value={formData.name}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												name: e.target.value,
+											}))
+										}
+										className="w-full px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6] text-[#5a3e2b] placeholder-[#5a3e2b]/40
+												focus:outline-none focus:border-[#6b8e50]"
+										placeholder="Your name"
+										required
+									/>
+								</div>
+
+								<div>
+									<label
+										htmlFor="bio"
+										className="block text-sm font-medium text-[#5a3e2b] mb-1"
+									>
+										Bio
+									</label>
+									<textarea
+										id="bio"
+										value={formData.bio}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												bio: e.target.value,
+											}))
+										}
+										className="w-full px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6] text-[#5a3e2b] placeholder-[#5a3e2b]/40
+												focus:outline-none focus:border-[#6b8e50] min-h-[100px]"
+										placeholder="Tell us about yourself"
+										required
+									/>
+								</div>
+
+								<div>
+									<label
+										htmlFor="country"
+										className="block text-sm font-medium text-[#5a3e2b] mb-1"
+									>
+										Country
+									</label>
+									<input
+										type="text"
+										id="country"
+										value={formData.country}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												country: e.target.value,
+											}))
+										}
+										className="w-full px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6] text-[#5a3e2b] placeholder-[#5a3e2b]/40
+												focus:outline-none focus:border-[#6b8e50]"
+										placeholder="Your country"
+										required
+									/>
+								</div>
+							</div>
+						</div>
+
+						{/* Social Profiles */}
+						<div>
+							<h3 className="text-lg font-medium text-[#5a3e2b] border-b border-[#b89d65]/30 pb-2 mb-4">
+								Social Profiles
+							</h3>
+							{Object.keys(formData.socialProfiles).length ===
+								0 && (
+								<p className="text-sm text-[#5a3e2b]/60 mb-4">
+									Please provide at least one social profile
+								</p>
+							)}
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								{[
+									"twitter",
+									"linkedin",
+									"github",
+									"telegram",
+								].map((platform) => (
+									<div key={platform}>
+										<label
+											htmlFor={platform}
+											className="block text-sm font-medium text-[#5a3e2b] mb-1 capitalize"
+										>
+											{platform}
+										</label>
+										<input
+											type="text"
+											id={platform}
+											value={
+												formData.socialProfiles[
+													platform as keyof SocialProfiles
+												] || ""
+											}
+											onChange={(e) =>
+												handleSocialProfileChange(
+													platform as keyof SocialProfiles,
+													e.target.value
+												)
+											}
+											className="w-full px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6] text-[#5a3e2b] placeholder-[#5a3e2b]/40
+														focus:outline-none focus:border-[#6b8e50]"
+											placeholder={`Your ${platform} profile`}
+										/>
+									</div>
+								))}
+							</div>
+						</div>
+
+						{/* Interests */}
+						<div>
+							<div className="flex justify-between items-center border-b border-[#b89d65]/30 pb-2 mb-4">
+								<h3 className="text-lg font-medium text-[#5a3e2b]">
+									Interests
+								</h3>
+								<button
+									type="button"
+									onClick={addInterest}
+									className="text-sm bg-[#6b8e50] text-white px-3 py-1 rounded-md hover:bg-[#5a7a42] transition-colors"
 								>
-									<span className="w-24 text-[#5a3e2b]">
-										{label}:
-									</span>
-									<input
-										type="text"
-										value={
-											formData.socialProfiles[
-												platform as keyof SocialProfiles
-											] || ""
-										}
-										onChange={(e) =>
-											handleSocialProfileChange(
-												platform as keyof SocialProfiles,
-												e.target.value
-											)
-										}
-										placeholder={placeholder}
-										className="flex-1 px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6]/50 
-												 text-[#5a3e2b] placeholder-[#5a3e2b]/50 focus:outline-none 
-												 focus:border-[#b89d65] transition-colors"
-									/>
-								</div>
-							))}
-						</div>
-						<p className="mt-2 text-sm text-[#5a3e2b]/60">
-							Fill in at least one social profile of your choice
-						</p>
-					</div>
-
-					{/* Dynamic Interests Input */}
-					<div>
-						<label className="block text-[#5a3e2b] font-medium mb-2">
-							Your Interests
-						</label>
-						<div className="space-y-3">
-							{formData.interests.map((interest, index) => (
-								<div key={index} className="flex gap-2">
-									<input
-										type="text"
-										value={interest}
-										onChange={(e) =>
-											updateInterest(
-												index,
-												e.target.value
-											)
-										}
-										placeholder="Enter your interest"
-										className="flex-1 px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6]/50 
-												 text-[#5a3e2b] placeholder-[#5a3e2b]/50 focus:outline-none 
-												 focus:border-[#b89d65] transition-colors"
-									/>
-									{formData.interests.length > 1 && (
-										<button
-											type="button"
-											onClick={() =>
-												removeInterest(index)
+									+ Add Interest
+								</button>
+							</div>
+							<div className="space-y-4">
+								{formData.interests.map((interest, index) => (
+									<div
+										key={index}
+										className="flex gap-2 items-center"
+									>
+										<input
+											type="text"
+											value={interest}
+											onChange={(e) =>
+												updateInterest(
+													index,
+													e.target.value
+												)
 											}
-											className="px-3 py-2 rounded-lg border-2 border-[#8c7851] 
-													 bg-[#b89d65]/10 text-[#5a3e2b] hover:bg-[#b89d65]/20 
-													 transition-colors"
-										>
-											×
-										</button>
-									)}
-								</div>
-							))}
-
-							<button
-								type="button"
-								onClick={addInterest}
-								className="w-full px-4 py-2 rounded-lg border-2 border-dashed border-[#b89d65] 
-										 text-[#5a3e2b] hover:bg-[#b89d65]/10 transition-colors"
-							>
-								+ Add Interest
-							</button>
+											className="flex-1 px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6] text-[#5a3e2b] placeholder-[#5a3e2b]/40
+													focus:outline-none focus:border-[#6b8e50]"
+											placeholder="Enter an interest"
+										/>
+										{index > 0 && (
+											<button
+												type="button"
+												onClick={() =>
+													removeInterest(index)
+												}
+												className="bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600"
+											>
+												Remove
+											</button>
+										)}
+									</div>
+								))}
+							</div>
 						</div>
-					</div>
 
-					{/* Meeting Preferences */}
-					<div>
-						<label className="block text-[#5a3e2b] font-medium mb-2">
-							Who Would You Like to Meet?
-						</label>
-						<div className="space-y-3">
-							{formData.meetingPreferences.map((pref, index) => (
-								<div key={index} className="flex gap-2">
-									<input
-										type="text"
-										value={pref}
-										onChange={(e) =>
-											updateMeetingPreference(
-												index,
-												e.target.value
-											)
-										}
-										placeholder="e.g., Developers, Investors, Designers"
-										className="flex-1 px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6]/50 
-												 text-[#5a3e2b] placeholder-[#5a3e2b]/50 focus:outline-none 
-												 focus:border-[#b89d65] transition-colors"
-									/>
-									{formData.meetingPreferences.length > 1 && (
-										<button
-											type="button"
-											onClick={() =>
-												removeMeetingPreference(index)
-											}
-											className="px-3 py-2 rounded-lg border-2 border-[#8c7851] 
-													 bg-[#b89d65]/10 text-[#5a3e2b] hover:bg-[#b89d65]/20 
-													 transition-colors"
+						{/* Meeting Preferences */}
+						<div>
+							<div className="flex justify-between items-center border-b border-[#b89d65]/30 pb-2 mb-4">
+								<h3 className="text-lg font-medium text-[#5a3e2b]">
+									Meeting Preferences
+								</h3>
+								<button
+									type="button"
+									onClick={addMeetingPreference}
+									className="text-sm bg-[#6b8e50] text-white px-3 py-1 rounded-md hover:bg-[#5a7a42] transition-colors"
+								>
+									+ Add Preference
+								</button>
+							</div>
+							<div className="space-y-4">
+								{formData.meetingPreferences.map(
+									(pref, index) => (
+										<div
+											key={index}
+											className="flex gap-2 items-center"
 										>
-											×
-										</button>
-									)}
-								</div>
-							))}
-
-							<button
-								type="button"
-								onClick={addMeetingPreference}
-								className="w-full px-4 py-2 rounded-lg border-2 border-dashed border-[#b89d65] 
-										 text-[#5a3e2b] hover:bg-[#b89d65]/10 transition-colors"
-							>
-								+ Add Preference
-							</button>
+											<input
+												type="text"
+												value={pref}
+												onChange={(e) =>
+													updateMeetingPreference(
+														index,
+														e.target.value
+													)
+												}
+												className="flex-1 px-4 py-2 rounded-lg border-2 border-[#b89d65] bg-[#f8f5e6] text-[#5a3e2b] placeholder-[#5a3e2b]/40
+													focus:outline-none focus:border-[#6b8e50]"
+												placeholder="Enter a meeting preference"
+											/>
+											{index > 0 && (
+												<button
+													type="button"
+													onClick={() =>
+														removeMeetingPreference(
+															index
+														)
+													}
+													className="bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600"
+												>
+													Remove
+												</button>
+											)}
+										</div>
+									)
+								)}
+							</div>
 						</div>
-					</div>
 
-					{/* Submit Button */}
-					<button
-						type="submit"
-						disabled={isSubmitting}
-						className="w-full bg-[#b89d65] hover:bg-[#a08a55] text-[#f8f5e6] 
-								 font-medium py-3 rounded-lg border-2 border-[#8c7851] 
-								 transition-colors focus:outline-none focus:ring-2 focus:ring-[#b89d65]
-								 disabled:opacity-70 disabled:cursor-not-allowed"
-					>
-						{isSubmitting ? "Registering..." : "Register"}
-					</button>
-				</form>
+						<button
+							type="submit"
+							disabled={isSubmitting}
+							className="w-full bg-[#6b8e50] text-white py-3 px-6 rounded-lg hover:bg-[#5a7a42] transition-colors
+									disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg shadow-md"
+						>
+							{isSubmitting ? "Registering..." : "Register"}
+						</button>
+					</form>
+				</div>
 			</div>
 		</div>
 	);
