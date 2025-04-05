@@ -5,6 +5,8 @@ import React from "react";
 import { http, createConfig } from "@wagmi/core";
 import { baseSepolia, mainnet, base } from "@wagmi/core/chains";
 import Nav from "../common/nav";
+import BottomNav from "../common/bottomNav";
+
 export const wagmiConfig = createConfig({
 	chains: [baseSepolia, mainnet, base],
 	transports: {
@@ -30,8 +32,13 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
 					},
 				}}
 			>
-				<Nav />
-				{children}
+				<div className="flex flex-col min-h-screen">
+					<Nav />
+					<main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+						{children}
+					</main>
+					<BottomNav />
+				</div>
 			</PrivyProvider>
 		</>
 	);

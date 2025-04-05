@@ -41,7 +41,7 @@ export default function RegisterPage() {
 					return;
 				}
 				setEvent(eventData);
-				
+
 				if (user?.wallet?.address && eventData.eventUsers) {
 					const isRegistered = eventData.eventUsers.some(
 						(eu: any) => eu.userId === user.wallet?.address
@@ -215,7 +215,7 @@ export default function RegisterPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-[#f8f5e6] p-8">
+		<div className="min-h-screen bg-[#f8f5e6] p-8 pb-24">
 			<div className="max-w-2xl mx-auto bg-[#f0e6c0] rounded-xl shadow-lg p-6 border-2 border-[#b89d65]">
 				<h1 className="text-3xl font-serif text-[#5a3e2b] mb-8">
 					Register for Event
