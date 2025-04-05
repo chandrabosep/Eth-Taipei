@@ -1,7 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState , useEffect } from 'react';
 import { ClipboardDocumentIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
+import { baseSepolia, celo, rootstockTestnet } from "viem/chains";
+import {wagmiAbi} from '@/app/create-event/abi'
+import {publicClient, getWalletClient, chainConfig  ,walletClient} from '@/app/create-event/config'
+import { createWalletClient ,custom } from 'viem'
+import { parseGwei } from 'viem'
+import { createPublicClient , http } from 'viem'
+import { usePrivy } from "@privy-io/react-auth";
+
 
 // Helper function to truncate address
 const truncateAddress = (address: string) => {
@@ -11,18 +19,11 @@ const truncateAddress = (address: string) => {
 // Sample leaderboard data with addresses
 const leaderboardData = [
   { id: 1, address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", connectionsMade: 15, xp: 1250 },
-  { id: 2, address: "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5", connectionsMade: 12, xp: 980 },
-  { id: 3, address: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F", connectionsMade: 11, xp: 890 },
-  { id: 4, address: "0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF", connectionsMade: 10, xp: 850 },
-  { id: 5, address: "0x6813Eb9362372EEF6200f3b1dbC3f819671cBA69", connectionsMade: 9, xp: 780 },
-  { id: 6, address: "0x1aE0EA34a72D944a8C7603FfB3eC30a6669E454C", connectionsMade: 8, xp: 720 },
-  { id: 7, address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", connectionsMade: 7, xp: 650 },
-  { id: 8, address: "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955", connectionsMade: 6, xp: 580 },
-  { id: 9, address: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f", connectionsMade: 5, xp: 520 },
-  { id: 10, address: "0x976EA74026E726554dB657fA54763abd0C3a0aa9", connectionsMade: 4, xp: 450 },
+
 ];
 
 export default function LeaderboardPage() {
+  const { user } = usePrivy();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
   const handleCopyAddress = async (address: string) => {
@@ -35,6 +36,43 @@ export default function LeaderboardPage() {
     }
   };
 
+  const [data, setData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const getData = async() => {
+      try {
+        // Use a specific address to test
+        const testAddress = '0xB822B51A88E8a03fCe0220B15Cb2C662E42Adec1';
+        
+        const contractData = await publicClient.readContract({
+          address: "0x723733980ce3881d2c9421E3A76bB61636E47c1e", 
+          abi: wagmiAbi, 
+          functionName: "getGlobalXP", 
+          args: [testAddress as `0x${string}`]
+        });
+        
+        console.log("XP for test address:", contractData);
+        
+        // Update the leaderboard data with the fetched XP
+        const updatedLeaderboard = [
+          { 
+            id: 1, 
+            address: testAddress, 
+            connectionsMade: 15, 
+            xp: Number(contractData) || 0 
+          }
+        ];
+        
+        setData(updatedLeaderboard);
+      } catch (error) {
+        console.error("Error fetching XP data:", error);
+      }
+    };
+    
+    getData();
+  }, []);
+
+  
   return (
     <div className="min-h-screen bg-[#f8f5e6] p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
@@ -55,7 +93,7 @@ export default function LeaderboardPage() {
 
           {/* Table Body */}
           <div className="divide-y divide-[#b89d65]/30">
-            {leaderboardData.map((player, index) => (
+            {data.map((player, index) => (
               <div 
                 key={player.id}
                 className={`grid grid-cols-[3rem_1fr_4rem_4rem] sm:grid-cols-4 gap-2 sm:gap-4 p-3 sm:p-4 

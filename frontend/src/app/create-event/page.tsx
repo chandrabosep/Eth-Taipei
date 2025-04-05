@@ -4,14 +4,14 @@ import React, { useState, useRef } from "react";
 import { format } from "date-fns";
 import { createEvent } from "@/actions/events.action";
 import { useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy , useWallets } from "@privy-io/react-auth";
 import { uploadToPinata } from "@/utils/pinata";
 import { wagmiAbi } from "./abi";
 import { publicClient, getWalletClient, chainConfig  ,walletClient} from './config'
 import { createWalletClient ,custom } from 'viem'
 import { parseGwei } from 'viem'
 import { createPublicClient , http } from 'viem'
-import { baseSepolia } from "viem/chains";
+import { baseSepolia, celo, rootstockTestnet } from "viem/chains";
 
 interface FormData {
 	eventName: string;
@@ -22,9 +22,22 @@ interface FormData {
 	eventImage?: File;
 }
 
+const CONTRACT_ADDRESSES = {
+	celo: '0x61edDE0E4B97D878C14F5f5706309d4572550Afa',
+	baseSepolia: '0x2D5b75e537b6424A42B7D065AFa511D5aa484B01',
+	rootstockTestnet: '0xbF452C9d17763bEc4692BBc54F29A5bC03aF6c3A'
+} as const;
+
+// const CHAIN_ID={
+// 	celo: 42220,
+// 	baseSepolia: 84531,
+// 	rootstockTestnet: 31
+// } as const
+
 export default function CreateEvent() {
 	const router = useRouter();
 	const { user } = usePrivy();
+	const { wallets } = useWallets();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [imagePreview, setImagePreview] = useState<string>("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,6 +48,8 @@ export default function CreateEvent() {
 		endDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
 		features: [""],
 	});
+
+
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -90,18 +105,65 @@ export default function CreateEvent() {
 
 			console.log({ eventName, description, startTimestamp, endTimestamp, features });
 
-			const { request } = await publicClient.simulateContract({
-				address: '0x3ac802066165653f5b67fdb2830489a24792DA01',
+			
+
+// Now get the contract address
+const wallet = wallets[0];
+if (!wallet) throw new Error("No wallet connected");
+
+// Create a mapping of chain IDs to network names
+const chainIdToNetwork: Record<number, keyof typeof CONTRACT_ADDRESSES> = {
+    42220: 'celo',
+    84531: 'baseSepolia',
+    31: 'rootstockTestnet'
+};
+
+// Get the network name based on the wallet's chain ID
+const chainId = Number(wallet.chainId);
+console.log("Current chain ID:", chainId);
+
+// Use the network from the mapping or default to celo
+const network = chainIdToNetwork[chainId] || 'celo';
+console.log("Selected network:", network);
+
+const contractAddress = CONTRACT_ADDRESSES[network];
+console.log("Using contract address:", contractAddress);
+
+			// Get the chain configuration based on the network
+			const getChainForNetwork = (networkName: string) => {
+				switch(networkName) {
+					case 'celo': return celo;
+					case 'baseSepolia': return baseSepolia;
+					case 'rootstockTestnet': return rootstockTestnet;
+					default: return celo;
+				}
+			};
+
+			// Create network-specific clients
+			const chain = getChainForNetwork(network);
+			const dynamicPublicClient = createPublicClient({
+				chain,
+				transport: http()
+			});
+
+			const dynamicWalletClient = createWalletClient({
+				chain,
+				transport: custom(window.ethereum)
+			});
+
+			// Use the dynamic clients instead of the imported ones
+			const { request } = await dynamicPublicClient.simulateContract({
+				address: contractAddress as `0x${string}`,
 				abi: wagmiAbi,
 				functionName: 'createEvent',
-				args: [eventName, description , BigInt(startTimestamp), BigInt(endTimestamp), features],
+				args: [eventName, description, BigInt(startTimestamp), BigInt(endTimestamp), features],
 				account: user?.wallet?.address as `0x${string}`
 			});
 
 			console.log({ request });
 
-			const hash = await walletClient.writeContract(request);
-			await publicClient.waitForTransactionReceipt({hash});
+			const hash = await dynamicWalletClient.writeContract(request);
+			await dynamicPublicClient.waitForTransactionReceipt({hash});
 
 			// Upload image to Pinata if provided
 			let pictureUrl = "";
