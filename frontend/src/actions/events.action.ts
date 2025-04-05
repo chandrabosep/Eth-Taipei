@@ -11,6 +11,12 @@ interface CreateEventData {
 	creatorAddress: string;
 }
 
+interface AddOrganizerData {
+	eventId: string;
+	address: string;
+	role: string;
+}
+
 function slugify(text: string): string {
 	return text
 		.toString()
@@ -49,10 +55,61 @@ export async function createEvent(data: CreateEventData) {
 			},
 		});
 
+		// Add the creator as an organizer
+		await prisma.organizer.create({
+			data: {
+				eventId: createdEvent.id,
+				address: creatorAddress,
+				role: "organizer",
+			},
+		});
+
 		console.log("Event created successfully:", createdEvent);
 		return createdEvent;
 	} catch (error) {
 		console.error("Error creating event:", error);
+		throw error;
+	}
+}
+
+export async function addOrganizer(data: AddOrganizerData) {
+	try {
+		const { eventId, address, role } = data;
+
+		// Check if the event exists
+		const event = await prisma.event.findUnique({
+			where: { id: eventId },
+		});
+
+		if (!event) {
+			throw new Error("Event not found");
+		}
+
+		// Check if the organizer already exists for this event
+		const existingOrganizer = await prisma.organizer.findFirst({
+			where: {
+				eventId,
+				address,
+			},
+		});
+
+		if (existingOrganizer) {
+			throw new Error("This address is already an organizer for this event");
+		}
+
+		// Add the new organizer
+		const organizer = await prisma.organizer.create({
+			data: {
+				eventId,
+				address,
+				role,
+			},
+		});
+
+		console.log("Organizer added successfully:", organizer);
+		return organizer;
+	} catch (error) {
+		console.error("Error adding organizer:", error);
 		throw error;
 	}
 }
@@ -77,6 +134,7 @@ export async function getEventBySlug(slug: string) {
 					user: true,
 				},
 			},
+			organizers: true,
 		},
 	});
 	return event;

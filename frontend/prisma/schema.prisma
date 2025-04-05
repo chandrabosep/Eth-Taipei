@@ -24,6 +24,8 @@ model Event {
   // Relations
   creatorAddress   String
   eventUsers  EventUser[]
+  organizers Organizer[] // Added field for organizers
+
 }
 
 // User model
@@ -51,7 +53,6 @@ model EventUser {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   
-  // Relations
   userId     String
   user       User         @relation(fields: [userId], references: [id])
   eventId    String
@@ -61,6 +62,18 @@ model EventUser {
   assignedQuests   UserQuest[]  // Quests assigned to this event user
   
   @@unique([userId, eventId])
+}
+
+// Organizer model - represents an organizer for an event
+model Organizer {
+  id         String       @id @default(uuid())
+  address     String
+  role        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  eventId    String
+  event      Event        @relation(fields: [eventId], references: [id])
 }
 
 // Connection model - represents connections between users at an event
@@ -145,5 +158,3 @@ enum QuestStatus {
   VERIFIED
   FAILED
 }
-
-
