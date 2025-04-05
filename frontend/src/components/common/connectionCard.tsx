@@ -1,19 +1,20 @@
-import { 
-	UserCircleIcon, 
-	ClockIcon, 
-	CheckCircleIcon, 
-	XMarkIcon 
+import {
+	UserCircleIcon,
+	ClockIcon,
+	CheckCircleIcon,
+	XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 
 interface Connection {
-	id: number;
+	id: string;
 	address: string;
 	name: string;
 	matchedInterests: string[];
 	status: "accepted" | "pending" | "rejected";
 	timestamp: string;
 	xpEarned?: number;
+	type?: "sent" | "received";
 }
 
 export const ConnectionCard = ({
@@ -22,14 +23,16 @@ export const ConnectionCard = ({
 	onAccept,
 	onReject,
 	style,
+	isPending,
 }: {
 	connection: Connection;
 	truncateAddress: (address: string) => string;
-	onAccept?: (id: number) => void;
-	onReject?: (id: number) => void;
+	onAccept?: (id: string) => void;
+	onReject?: (id: string) => void;
 	style?: string;
+	isPending?: boolean;
 }) => {
-	const isPending = connection.status === "pending";
+	const isPendingRequest = connection.status === "pending";
 	const isAccepted = connection.status === "accepted";
 	const isRejected = connection.status === "rejected";
 
@@ -68,29 +71,33 @@ export const ConnectionCard = ({
 						</span>
 					)}
 
-					{isPending && (
+					{isPendingRequest && (
 						<span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full flex items-center">
 							<ClockIcon className="w-3 h-3 mr-1" />
-							Pending
+							{isPending ? "Pending" : "Awaiting Response"}
 						</span>
 					)}
 				</div>
 
-				<div className="mb-3">
-					<p className="text-sm text-[#5a3e2b]/80 mb-1">
-						Shared interests:
-					</p>
-					<div className="flex flex-wrap gap-1">
-						{connection.matchedInterests.map((interest: string, idx: number) => (
-							<span
-								key={idx}
-								className="bg-[#f0e6c0] border border-[#b89d65] text-[#5a3e2b] text-xs px-2 py-0.5 rounded-full"
-							>
-								{interest}
-							</span>
-						))}
+				{connection.matchedInterests.length > 0 && (
+					<div>
+						<p className="text-sm text-[#5a3e2b]/80 mb-1">
+							Shared interests:
+						</p>
+						<div className="flex flex-wrap gap-1">
+							{connection.matchedInterests.map(
+								(interest: string, idx: number) => (
+									<span
+										key={idx}
+										className="bg-[#f0e6c0] border border-[#b89d65] text-[#5a3e2b] text-xs px-2 py-0.5 rounded-full"
+									>
+										{interest}
+									</span>
+								)
+							)}
+						</div>
 					</div>
-				</div>
+				)}
 
 				<div className="flex items-center text-xs text-[#5a3e2b]/60">
 					<ClockIcon className="w-3 h-3 mr-1" />
@@ -104,7 +111,7 @@ export const ConnectionCard = ({
 				</div>
 
 				{/* Action buttons for pending requests */}
-				{isPending && onAccept && onReject && (
+				{isPendingRequest && onAccept && onReject && (
 					<div className="flex gap-2 mt-3">
 						<button
 							onClick={() => onAccept(connection.id)}
