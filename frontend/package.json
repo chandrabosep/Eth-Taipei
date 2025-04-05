@@ -10,6 +10,7 @@
 		"lint": "next lint"
 	},
 	"dependencies": {
+		"@arx-research/libhalo": "^1.10.15",
 		"@langchain/community": "^0.3.39",
 		"@langchain/core": "^0.3.43",
 		"@langchain/openai": "^0.5.4",
