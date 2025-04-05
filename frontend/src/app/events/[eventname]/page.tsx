@@ -18,7 +18,6 @@ import { useParams, useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { getEventBySlug } from "@/actions/events.action";
 import { PrivyLoginButton } from "@/components/common/connectbtn";
-import { execHaloCmdWeb } from "@arx-research/libhalo/api/web";
 import {
 	sendConnectionRequest,
 	getPendingRequests,
@@ -141,6 +140,14 @@ const ConnectionRequestDialog = ({
 	);
 };
 
+// Create an extra check for browser environment
+const isBrowser = typeof window !== "undefined";
+
+// Dynamically import the NFC library to avoid server-side rendering issues
+const execHaloCmdWeb = isBrowser
+	? require("@arx-research/libhalo/api/web").execHaloCmdWeb
+	: null;
+
 export default function page() {
 	const [scannedData, setScannedData] = useState<ScannedData | null>(null);
 	const [showRequestDialog, setShowRequestDialog] = useState(false);
@@ -162,6 +169,12 @@ export default function page() {
 	const { toast } = useToast();
 	const [quests, setQuests] = useState<Quest[]>([]);
 	const [isNfcScanning, setIsNfcScanning] = useState(false);
+	const [isMounted, setIsMounted] = useState(false);
+
+	// Check if component is mounted (client-side)
+	useEffect(() => {
+		setIsMounted(true);
+	}, []);
 
 	useEffect(() => {
 		const checkRegistration = async () => {
@@ -506,6 +519,19 @@ export default function page() {
 	};
 
 	const handleNFCScan = async () => {
+		// Don't proceed if we're not in the browser or the component isn't mounted
+		if (!isBrowser || !isMounted || !execHaloCmdWeb) {
+			console.error(
+				"NFC scanning is only available in browser environments"
+			);
+			toast({
+				title: "Error",
+				description: "NFC scanning is not available on this device",
+				variant: "destructive",
+			});
+			return;
+		}
+
 		setIsNfcScanning(true);
 		console.log("Starting NFC scan...");
 

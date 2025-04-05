@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { execHaloCmdWeb } from "@arx-research/libhalo/api/web";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
@@ -36,6 +35,14 @@ interface HaloResponse {
 	signature: string;
 }
 
+// Create an extra check for browser environment
+const isBrowser = typeof window !== "undefined";
+
+// Dynamically import the NFC library to avoid server-side rendering issues
+const execHaloCmdWeb = isBrowser
+	? require("@arx-research/libhalo/api/web").execHaloCmdWeb
+	: null;
+
 export default function NFCRegistrationPage() {
 	const router = useRouter();
 	const params = useParams();
@@ -48,8 +55,14 @@ export default function NFCRegistrationPage() {
 	const [loading, setLoading] = useState(true);
 	const [isRegistered, setIsRegistered] = useState(false);
 	const [registrationSuccess, setRegistrationSuccess] = useState(false);
+	const [isMounted, setIsMounted] = useState(false);
 
 	const eventSlug = params.eventname as string;
+
+	// Check if component is mounted (client-side)
+	useEffect(() => {
+		setIsMounted(true);
+	}, []);
 
 	useEffect(() => {
 		const checkRegistration = async () => {
@@ -100,6 +113,19 @@ export default function NFCRegistrationPage() {
 	}, [isRegistered, loading, ready, router, eventSlug, authenticated]);
 
 	const handleNFCScan = async () => {
+		// Don't proceed if we're not in the browser or the component isn't mounted
+		if (!isBrowser || !isMounted || !execHaloCmdWeb) {
+			console.error(
+				"NFC scanning is only available in browser environments"
+			);
+			toast({
+				title: "Error",
+				description: "NFC scanning is not available on this device",
+				variant: "destructive",
+			});
+			return;
+		}
+
 		setIsScanning(true);
 		console.log("Starting NFC scan...");
 
@@ -240,6 +266,17 @@ export default function NFCRegistrationPage() {
 	const handleReturnToEvent = () => {
 		router.push(`/events/${eventSlug}`);
 	};
+
+	// If not mounted yet, show loading state
+	if (!isMounted) {
+		return (
+			<div className="min-h-screen bg-[#f8f5e6] flex flex-col items-center justify-center p-6">
+				<div className="w-full max-w-md text-center space-y-8">
+					<p>Loading NFC functionality...</p>
+				</div>
+			</div>
+		);
+	}
 
 	if (loading) {
 		return (
