@@ -3,23 +3,36 @@
 import { useRouter, usePathname } from "next/navigation";
 import { Home, Trophy, Users, User } from "lucide-react";
 
-export default function BottomNav() {
+interface BottomNavProps {
+	eventName: string;
+}
+
+export default function BottomNav({ eventName }: BottomNavProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 
 	const tabs = [
-		{ name: "Home", icon: Home, path: "/events" },
-		{ name: "Quests", icon: Trophy, path: "/quests" },
-		{ name: "Interactions", icon: Users, path: "/interactions" },
-		{ name: "Profile", icon: User, path: "/profile" },
+		{ name: "Home", icon: Home, path: `/events/${eventName}` },
+		{ name: "Quests", icon: Trophy, path: `/events/${eventName}/quests` },
+		{
+			name: "Interactions",
+			icon: Users,
+			path: `/events/${eventName}/interactions`,
+		},
+		{ name: "Profile", icon: User, path: `/events/${eventName}/profile` },
 	];
+
+	// Check if the current path matches any of our tab paths
+	const isActivePath = (path: string) => {
+		return pathname.startsWith(path);
+	};
 
 	return (
 		<div className="fixed bottom-0 left-0 right-0 bg-[#f0e6c0] border-t-2 border-[#b89d65] md:hidden">
 			<div className="flex justify-around items-center h-16">
 				{tabs.map((tab) => {
 					const Icon = tab.icon;
-					const isActive = pathname === tab.path;
+					const isActive = isActivePath(tab.path);
 					return (
 						<button
 							key={tab.name}
