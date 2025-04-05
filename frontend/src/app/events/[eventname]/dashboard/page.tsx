@@ -554,6 +554,17 @@ export default function DashboardPage() {
 		return status.charAt(0) + status.slice(1).toLowerCase();
 	};
 
+	const fetchEventData = async () => {
+		try {
+			const data = await getEventBySlug(eventSlug);
+			if (data) {
+				setEventData(data);
+			}
+		} catch (error) {
+			console.error("Error fetching event data:", error);
+		}
+	};
+
 	useEffect(() => {
 		console.log("Effect running with:", {
 			ready,
