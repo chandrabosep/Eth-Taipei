@@ -14,6 +14,7 @@ import {
 	ClipboardIcon,
 } from "@heroicons/react/24/outline";
 import { getEventBySlug, addOrganizer } from "@/actions/events.action";
+import { updateUserStatus } from "@/actions/dashboard.action";
 
 interface EventUser {
 	id: string;
@@ -696,8 +697,31 @@ export default function DashboardPage() {
 		action: "approve" | "reject"
 	) => {
 		try {
-			// TODO: Implement API call to update user status
-			console.log(`User ${userId} ${action}ed`);
+			if (!eventData?.id) {
+				throw new Error("Event ID not found");
+			}
+
+			// Show loading state
+			const actionText = action === "approve" ? "Approving" : "Rejecting";
+			const loadingMessage = document.createElement("div");
+			loadingMessage.className =
+				"fixed bottom-4 right-4 bg-[#6b8e50] text-white px-4 py-2 rounded-lg";
+			loadingMessage.textContent = `${actionText} user...`;
+			document.body.appendChild(loadingMessage);
+
+			const result = await updateUserStatus(
+				eventData.id,
+				userId,
+				action === "approve" ? "ACCEPTED" : "REJECTED"
+			);
+
+			// Remove loading message
+			document.body.removeChild(loadingMessage);
+
+			if (!result.success) {
+				throw new Error(result.error || "Failed to update user status");
+			}
+
 			// Update local state
 			setEventData((prev) => {
 				if (!prev) return prev;
@@ -719,9 +743,43 @@ export default function DashboardPage() {
 					eventUsers: updatedUsers,
 				};
 			});
+
+			// Show success message with custom styling
+			const successMessage = document.createElement("div");
+			successMessage.className =
+				"fixed bottom-4 right-4 bg-[#6b8e50] text-white px-4 py-2 rounded-lg transition-opacity duration-500";
+			successMessage.textContent = `User has been ${
+				action === "approve" ? "approved" : "rejected"
+			} successfully!`;
+			document.body.appendChild(successMessage);
+
+			// Remove success message after 3 seconds
+			setTimeout(() => {
+				successMessage.style.opacity = "0";
+				setTimeout(() => {
+					document.body.removeChild(successMessage);
+				}, 500);
+			}, 3000);
+
 			setSelectedUser(null);
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Error updating user status:", error);
+
+			// Show error message with custom styling
+			const errorMessage = document.createElement("div");
+			errorMessage.className =
+				"fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg transition-opacity duration-500";
+			errorMessage.textContent =
+				error.message || "Failed to update user status";
+			document.body.appendChild(errorMessage);
+
+			// Remove error message after 3 seconds
+			setTimeout(() => {
+				errorMessage.style.opacity = "0";
+				setTimeout(() => {
+					document.body.removeChild(errorMessage);
+				}, 500);
+			}, 3000);
 		}
 	};
 

@@ -268,11 +268,27 @@ export async function updateUserStatus(
 	status: "ACCEPTED" | "REJECTED"
 ) {
 	try {
+		// First find the EventUser record to get the correct userId
+		const eventUser = await prisma.eventUser.findFirst({
+			where: {
+				id: userId,
+				eventId: eventId,
+			},
+			select: {
+				userId: true,
+			},
+		});
+
+		if (!eventUser) {
+			throw new Error("User registration not found");
+		}
+
+		// Update using the composite unique key
 		const updatedEventUser = await prisma.eventUser.update({
 			where: {
 				userId_eventId: {
-					userId,
-					eventId,
+					userId: eventUser.userId,
+					eventId: eventId,
 				},
 			},
 			data: {
