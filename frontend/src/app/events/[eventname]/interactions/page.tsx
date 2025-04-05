@@ -11,8 +11,9 @@ import {
 import { cn } from "@/lib/utils";
 import { ConnectionCard } from "@/components/common/connectionCard";
 
+// Define our local Connection interface to match the one expected by ConnectionCard
 interface Connection {
-	id: number;
+	id: string;
 	address: string;
 	name: string;
 	matchedInterests: string[];
@@ -25,10 +26,10 @@ const truncateAddress = (address: string) => {
 	return `${address.slice(0, 5)}...${address.slice(-5)}`;
 };
 
-// Mock data for demonstration
+// Mock data for demonstration - updated with string IDs
 const mockConnections: Connection[] = [
 	{
-		id: 1,
+		id: "1",
 		address: "0x1234567890abcdef1234567890abcdef12345678",
 		name: "Alice",
 		matchedInterests: ["DeFi", "NFTs", "Gaming"],
@@ -37,7 +38,7 @@ const mockConnections: Connection[] = [
 		xpEarned: 50,
 	},
 	{
-		id: 2,
+		id: "2",
 		address: "0xabcdef1234567890abcdef1234567890abcdef12",
 		name: "Bob",
 		matchedInterests: ["DAOs", "DeFi"],
@@ -45,7 +46,7 @@ const mockConnections: Connection[] = [
 		timestamp: new Date().toISOString(),
 	},
 	{
-		id: 3,
+		id: "3",
 		address: "0x7890abcdef1234567890abcdef1234567890abcd",
 		name: "Charlie",
 		matchedInterests: ["Gaming", "NFTs"],
@@ -61,7 +62,7 @@ export default function InteractionsPage() {
 		(conn) => conn.status === "pending"
 	);
 
-	const handleAcceptRequest = (requestId: number) => {
+	const handleAcceptRequest = (requestId: string) => {
 		console.log("Accepting request:", requestId);
 		setConnections(
 			connections.map((conn) =>
@@ -72,7 +73,7 @@ export default function InteractionsPage() {
 		);
 	};
 
-	const handleRejectRequest = (requestId: number) => {
+	const handleRejectRequest = (requestId: string) => {
 		console.log("Rejecting request:", requestId);
 		setConnections(
 			connections.map((conn) =>

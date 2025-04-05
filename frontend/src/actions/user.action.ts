@@ -69,10 +69,10 @@ export async function getUserProfile(
 				startDate: eu.event.startDate,
 				endDate: eu.event.endDate,
 				pictureUrl: eu.event.pictureUrl,
-				status: eu.status,
+				status: eu.status as "PENDING" | "ACCEPTED" | "REJECTED",
 				tags: eu.tags,
 				bio: eu.bio,
-				socials: eu.socials,
+				socials: eu.socials as Record<string, string>,
 			})),
 		};
 	} catch (error) {
