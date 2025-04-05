@@ -844,7 +844,7 @@ export default function DashboardPage() {
 			{/* Hero Section */}
 			<div className="relative h-64 bg-[#f0e6c0] border-b-2 border-[#b89d65]">
 				<img
-					src={eventData.pictureUrl || "/fall.webp"}
+					src={eventData.pictureUrl || "/event-fall.jpg"}
 					alt={eventData.name}
 					className="w-full h-full object-cover"
 				/>
@@ -874,7 +874,7 @@ export default function DashboardPage() {
 						<div className="flex items-center gap-6">
 							<div className="w-24 h-24 rounded-lg overflow-hidden bg-[#f8f5e6] border-2 border-[#b89d65]">
 								<img
-									src={eventData.pictureUrl || "/fall.webp"}
+									src={eventData.pictureUrl || "/event-fall.jpg"}
 									alt={eventData.name}
 									className="w-full h-full object-cover"
 								/>

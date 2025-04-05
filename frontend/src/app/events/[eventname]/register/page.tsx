@@ -234,19 +234,12 @@ export default function RegisterPage() {
 		<div className="min-h-screen bg-[#f8f5e6]">
 			{/* Hero Section */}
 			<div className="relative h-64 bg-[#f0e6c0] border-b-2 border-[#b89d65]">
-				{event?.pictureUrl ? (
-					<img
-						src={event.pictureUrl}
-						alt={event.name}
-						className="w-full h-full object-cover"
-					/>
-				) : (
-					<div className="w-full h-full bg-[#f0e6c0] flex items-center justify-center">
-						<span className="text-[#5a3e2b]/50 text-lg">
-							No event image
-						</span>
-					</div>
-				)}
+				<img
+					src={event?.pictureUrl || "/event-fall.jpg"}
+					alt={event?.name}
+					className="w-full h-full object-cover"
+				/>
+
 				<div className="absolute inset-0 bg-gradient-to-t from-[#f8f5e6] to-transparent" />
 				<div className="absolute bottom-8 left-8 right-8">
 					<h1 className="text-4xl md:text-5xl font-serif text-[#5a3e2b]">

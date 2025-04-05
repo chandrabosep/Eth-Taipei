@@ -38,17 +38,12 @@ function EventCard({ event, showRegistrations = false }: EventCardProps) {
 	return (
 		<div className="bg-[#f8f5e6] rounded-lg border-2 border-[#b89d65] overflow-hidden">
 			<div className="h-40 bg-[#f0e6c0] relative">
-				{event.pictureUrl ? (
-					<img
-						src={event.pictureUrl}
-						alt={event.name}
-						className="w-full h-full object-cover"
-					/>
-				) : (
-					<div className="w-full h-full flex items-center justify-center">
-						<CalendarIcon className="w-12 h-12 text-[#5a3e2b]/20" />
-					</div>
-				)}
+				<img
+					src={event.pictureUrl || "/event-fall.jpg"}
+					alt={event.name}
+					className="w-full h-full object-cover"
+				/>
+
 				{showRegistrations && (
 					<div className="absolute top-2 right-2 px-3 py-1 rounded-full text-sm bg-[#6b8e50]/10 text-[#6b8e50]">
 						{event.registeredUsersCount} registered
