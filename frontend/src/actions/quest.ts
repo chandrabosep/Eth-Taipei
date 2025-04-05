@@ -512,100 +512,116 @@ export async function verifyQuestCompletion({
 	completedWithUserId: string;
 }) {
 	try {
-		// Get the quest details with metadata
-		const quest = await prisma.userQuestion.findUnique({
-			where: { id: questId },
+		console.log(
+			`Verifying quest ${questId} with user ${completedWithUserId}`
+		);
+
+		// First get the UserQuest entry
+		const userQuest = await prisma.userQuest.findFirst({
+			where: { questId },
 			include: {
+				quest: true,
 				eventUser: {
 					include: {
 						user: true,
+						event: true,
 					},
 				},
 			},
 		});
 
-		if (!quest || !quest.metadata) {
+		if (!userQuest || !userQuest.quest) {
+			console.error("UserQuest or Quest not found:", questId);
 			return {
 				success: false,
-				error: "Quest not found or missing metadata",
+				error: "Quest not found",
 			};
 		}
 
-		// Type check and cast metadata
-		const metadata = quest.metadata as unknown as QuestMetadata;
-		if (!metadata.eventId) {
-			return {
-				success: false,
-				error: "Invalid quest metadata",
-			};
-		}
+		console.log("Found quest:", userQuest.quest);
 
 		// Get the user who completed the quest with
 		const completedWithUser = await prisma.eventUser.findFirst({
 			where: {
 				userId: completedWithUserId,
-				eventId: metadata.eventId,
+				eventId: userQuest.eventUser.eventId,
 			},
 			include: {
 				user: true,
+				event: true,
 			},
 		});
 
 		if (!completedWithUser) {
+			console.error(
+				"Completed with user not found:",
+				completedWithUserId
+			);
 			return {
 				success: false,
 				error: "User not found",
 			};
 		}
 
-		const requiredTags = metadata.tags || [];
+		console.log("Found completed with user:", completedWithUser);
 
-		// Check if the completed with user has any of the required tags
-		const hasMatchingTags = completedWithUser.tags.some((tag) =>
-			requiredTags.includes(tag.toLowerCase())
-		);
-
-		if (!hasMatchingTags) {
+		// Check if the quest is already completed
+		if (userQuest.status === "COMPLETED") {
+			console.log("Quest is already completed");
 			return {
 				success: false,
-				error: "User does not match the required criteria for this quest",
+				error: "Quest is already completed",
 			};
 		}
 
-		// Update the quest status to answered (since COMPLETED is not available)
-		const updatedQuest = await prisma.userQuestion.update({
-			where: { id: questId },
-			data: {
-				status: "ANSWERED",
-				answer: JSON.stringify({
-					completedWithUserId: completedWithUserId,
-					completedWithUserTags: completedWithUser.tags,
-					completedAt: new Date().toISOString(),
-				}),
-				metadata: {
-					...metadata,
-					completedAt: new Date().toISOString(),
-					completedWithUserId: completedWithUserId,
-					completedWithUserTags: completedWithUser.tags,
+		// Convert all tags to lowercase for case-insensitive comparison
+		const questTags = userQuest.quest.tags.map((tag) => tag.toLowerCase());
+		const userTags = completedWithUser.tags.map((tag) => tag.toLowerCase());
+
+		console.log("Quest tags:", questTags);
+		console.log("User tags:", userTags);
+
+		// Find all matching tags between quest and user
+		const matchingTags = questTags.filter((questTag) =>
+			userTags.includes(questTag)
+		);
+
+		console.log("Matching tags:", matchingTags);
+
+		// Check if there are any matching tags
+		if (matchingTags.length === 0) {
+			return {
+				success: false,
+				error: "User does not match the required criteria for this quest",
+				details: {
+					questTags,
+					userTags,
+					matchingTags,
 				},
+			};
+		}
+
+		// Update the UserQuest status to COMPLETED
+		const updatedUserQuest = await prisma.userQuest.update({
+			where: { id: userQuest.id },
+			data: {
+				status: "COMPLETED",
+				completedAt: new Date(),
 			},
 		});
 
-		// Create a UserQuest entry to track completion
-		const userQuest = await prisma.userQuest.create({
-			data: {
-				status: "COMPLETED",
-				questId: questId,
-				eventUserId: quest.eventUserId,
-				completedAt: new Date(),
-			},
+		console.log("Successfully verified and completed quest:", {
+			questId,
+			matchingTags,
+			updatedUserQuest,
 		});
 
 		return {
 			success: true,
 			data: {
-				quest: updatedQuest,
-				userQuest,
+				quest: userQuest.quest,
+				userQuest: updatedUserQuest,
+				matchedTags: matchingTags,
 			},
 		};
 	} catch (error) {

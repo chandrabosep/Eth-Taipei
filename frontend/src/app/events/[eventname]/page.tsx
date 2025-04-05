@@ -24,6 +24,11 @@ import {
 	updateConnectionStatus,
 	getRecentConnections,
 } from "@/actions/connections.action";
+import {
+	getEventUserIdForUser,
+	getAssignedQuestsForUser,
+	verifyQuestCompletion,
+} from "@/actions/quest";
 import { useToast } from "@/hooks/use-toast";
 
 interface Connection {
@@ -38,9 +43,32 @@ interface Connection {
 }
 
 interface ConnectionRequestDialogProps {
-	address: string;
+	address: {
+		address: string;
+		primaryTag: string;
+		allTags: string[];
+	};
 	onClose: () => void;
 	onConfirm: () => void;
+}
+
+interface ScannedData {
+	address: string;
+	primaryTag: string;
+	allTags: string[];
+}
+
+interface Quest {
+	id: string;
+	title: string;
+	description: string;
+	status: string;
+	metadata: Record<string, any> | null;
+	xpReward: number;
+	isCompleted: boolean;
+	assignedAt: Date | string;
+	completedAt: Date | string | null;
+	tags: string[];
 }
 
 const ConnectionRequestDialog = ({
@@ -48,6 +76,14 @@ const ConnectionRequestDialog = ({
 	onClose,
 	onConfirm,
 }: ConnectionRequestDialogProps) => {
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	const handleConfirm = async () => {
+		setIsSubmitting(true);
+		await onConfirm();
+		setIsSubmitting(false);
+	};
+
 	return (
 		<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
 			<div className="bg-[#f8f5e6] rounded-xl p-6 w-full max-w-md">
@@ -58,6 +94,7 @@ const ConnectionRequestDialog = ({
 					<button
 						onClick={onClose}
 						className="text-[#5a3e2b]/60 hover:text-[#5a3e2b]"
+						disabled={isSubmitting}
 					>
 						<X className="h-5 w-5" />
 					</button>
@@ -66,22 +103,36 @@ const ConnectionRequestDialog = ({
 					Would you like to send a connection request to:
 					<br />
 					<span className="font-mono text-sm break-all bg-[#f0e6c0] px-2 py-1 rounded mt-2 block">
-						{address}
+						{address.address}
 					</span>
+					{address.allTags && address.allTags.length > 0 && (
+						<span className="text-sm text-[#5a3e2b]/70 mt-2 block">
+							All Interests: {address.allTags.join(", ")}
+						</span>
+					)}
 				</p>
 				<div className="flex justify-end gap-3">
 					<Button
 						onClick={onClose}
 						variant="outline"
 						className="border-[#b89d65] text-[#5a3e2b] hover:bg-[#f0e6c0]"
+						disabled={isSubmitting}
 					>
 						Cancel
 					</Button>
 					<Button
-						onClick={onConfirm}
+						onClick={handleConfirm}
 						className="bg-[#6b8e50] hover:bg-[#5a7a42] text-white"
+						disabled={isSubmitting}
 					>
-						Send Request
+						{isSubmitting ? (
+							<>
+								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+								Sending...
+							</>
+						) : (
+							"Send Request"
+						)}
 					</Button>
 				</div>
 			</div>
@@ -90,7 +141,7 @@ const ConnectionRequestDialog = ({
 };
 
 export default function page() {
-	const [scannedData, setScannedData] = useState<string | null>(null);
+	const [scannedData, setScannedData] = useState<ScannedData | null>(null);
 	const [showRequestDialog, setShowRequestDialog] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -108,6 +159,7 @@ export default function page() {
 	);
 	const [isLoadingRecent, setIsLoadingRecent] = useState(false);
 	const { toast } = useToast();
+	const [quests, setQuests] = useState<Quest[]>([]);
 
 	useEffect(() => {
 		const checkRegistration = async () => {
@@ -211,24 +263,146 @@ export default function page() {
 
 	// Update the accept/reject handlers
 	const handleAcceptRequest = async (id: string) => {
-		if (!event?.id) return;
+		if (!event?.id || !user?.wallet?.address) return;
 
 		try {
+			setIsSubmitting(true);
+			setError(null);
+
+			// Get user's active quests
+			const eventUserResult = await getEventUserIdForUser(
+				user.wallet.address,
+				eventSlug
+			);
+			if (!eventUserResult.success || !eventUserResult.data) {
+				throw new Error(
+					eventUserResult.error || "Failed to get user data"
+				);
+			}
+
+			// Get the connection details to get the sender's address
+			const connection = pendingRequests.find((req) => req.id === id);
+			if (!connection) {
+				throw new Error("Connection request not found");
+			}
+
+			// Accept the connection request
 			const result = await updateConnectionStatus({
 				connectionId: id,
 				status: "ACCEPTED",
 				eventId: event.id,
 			});
 
-			if (result.success) {
-				// Refresh the pending requests
-				fetchPendingRequests();
-			} else {
-				setError(result.error || "Failed to accept request");
+			if (!result.success) {
+				throw new Error(result.error || "Failed to accept request");
 			}
+
+			// Get user's quests
+			const questsResult = await getAssignedQuestsForUser(
+				eventUserResult.data
+			);
+			if (!questsResult.success || !questsResult.data) {
+				throw new Error(
+					questsResult.error || "Failed to get user quests"
+				);
+			}
+
+			console.log("Available quests:", questsResult.data);
+			console.log("Connection user tags:", connection.matchedInterests);
+
+			// Match quests based on all tags
+			const matchingQuests = questsResult.data.filter((quest) => {
+				if (quest.isCompleted) return false;
+
+				const questTagsLower = quest.tags.map((tag) =>
+					tag.toLowerCase()
+				);
+				const userTagsLower = connection.matchedInterests.map((tag) =>
+					tag.toLowerCase()
+				);
+
+				// Check if any of the quest tags match with any of the user tags
+				const matches = questTagsLower.some((questTag) =>
+					userTagsLower.includes(questTag)
+				);
+
+				console.log(`Quest "${quest.title}" tag matching:`, {
+					questTags: questTagsLower,
+					userTags: userTagsLower,
+					matches,
+				});
+
+				return matches;
+			});
+
+			console.log("Matching quests:", matchingQuests);
+
+			// If there are matching quests, verify them
+			const verificationResults = [];
+			for (const quest of matchingQuests) {
+				console.log("Verifying quest:", quest);
+				const verificationResult = await verifyQuestCompletion({
+					questId: quest.id,
+					completedWithUserId: connection.address,
+				});
+				console.log("Verification result:", verificationResult);
+				verificationResults.push(verificationResult);
+			}
+
+			// Show success message with completed quests
+			const successfulVerifications = verificationResults.filter(
+				(r) => r.success && r.data?.matchedTags
+			);
+			let successMessage = "Connection accepted!";
+			if (successfulVerifications.length > 0) {
+				const questTags = successfulVerifications
+					.flatMap((r) => r.data?.matchedTags || [])
+					.filter((tag, index, self) => self.indexOf(tag) === index) // Remove duplicates
+					.join(", ");
+				successMessage += ` Completed ${successfulVerifications.length} quest(s) with tags: ${questTags}`;
+			}
+
+			toast({
+				title: "Success",
+				description: successMessage,
+			});
+
+			// Refresh the data
+			await Promise.all([
+				fetchPendingRequests(),
+				fetchRecentConnections(),
+				// Update quests list
+				getAssignedQuestsForUser(eventUserResult.data).then(
+					(updatedQuestsResult) => {
+						if (
+							updatedQuestsResult.success &&
+							updatedQuestsResult.data
+						) {
+							const formattedQuests =
+								updatedQuestsResult.data.map((quest) => ({
+									...quest,
+									assignedAt: quest.assignedAt.toISOString(),
+									completedAt: quest.completedAt
+										? quest.completedAt.toISOString()
+										: null,
+								}));
+							setQuests(formattedQuests);
+						}
+					}
+				),
+			]);
 		} catch (error) {
 			console.error("Error accepting request:", error);
-			setError("Failed to accept request");
+			toast({
+				title: "Error",
+				description:
+					error instanceof Error
+						? error.message
+						: "Failed to accept request",
+				variant: "destructive",
+			});
+		} finally {
+			setIsSubmitting(false);	
 		}
 	};
 
@@ -256,15 +430,25 @@ export default function page() {
 
 	const handleScan = (detectedCodes: any) => {
 		const rawValue = detectedCodes?.[0]?.rawValue;
-		if (
-			!rawValue ||
-			typeof rawValue !== "string" ||
-			rawValue === user?.wallet?.address
-		) {
+		if (!rawValue || typeof rawValue !== "string") {
 			return;
 		}
-		setScannedData(rawValue);
-		setShowRequestDialog(true);
+
+		try {
+			const scannedData = JSON.parse(rawValue);
+			if (scannedData.address === user?.wallet?.address) {
+				return;
+			}
+			setScannedData(scannedData);
+			setShowRequestDialog(true);
+		} catch (error) {
+			console.error("Error parsing QR code data:", error);
+			toast({
+				title: "Error",
+				description: "Invalid QR code format",
+				variant: "destructive",
+			});
+		}
 	};
 
 	const handleSendRequest = async () => {
@@ -274,46 +458,42 @@ export default function page() {
 			setIsSubmitting(true);
 			setError(null);
 
+			// Send connection request
 			const result = await sendConnectionRequest({
 				senderId: user.wallet.address,
-				receiverAddress: scannedData,
+				receiverAddress: scannedData.address,
 				eventId: event.id,
 			});
 
 			if (!result.success) {
-				setError(result.error || "Failed to send connection request");
 				toast({
 					title: "Error",
 					description:
 						result.error || "Failed to send connection request",
 					variant: "destructive",
 				});
-
-				if (result.closeDialog) {
-					setShowRequestDialog(false);
-					setScannedData(null);
-				}
-
 				return;
 			}
 
 			toast({
 				title: "Success",
-				description: "Connection request sent successfully!",
-				variant: "default",
+				description: "Connection request sent!",
 			});
 
+			// Reset state and refresh data
 			setShowRequestDialog(false);
 			setScannedData(null);
 
-			// Refresh pending requests to show the new sent request
-			fetchPendingRequests();
+			// Refresh the pending requests
+			await fetchPendingRequests();
 		} catch (error) {
-			console.error("Error sending connection request:", error);
-			setError("Failed to send connection request");
+			console.error("Error sending request:", error);
 			toast({
 				title: "Error",
-				description: "Failed to send connection request",
+				description:
+					error instanceof Error
+						? error.message
+						: "Failed to send connection request",
 				variant: "destructive",
 			});
 		} finally {
@@ -373,7 +553,21 @@ export default function page() {
 							</CardHeader>
 							<CardContent className="flex flex-col items-center justify-center">
 								<QRCodeSVG
-									value={user?.wallet?.address || ""}
+									value={JSON.stringify({
+										address: user?.wallet?.address,
+										primaryTag:
+											event?.eventUsers?.find(
+												(eu: any) =>
+													eu.userId ===
+													user?.wallet?.address
+											)?.tags?.[0] || "",
+										allTags:
+											event?.eventUsers?.find(
+												(eu: any) =>
+													eu.userId ===
+													user?.wallet?.address
+											)?.tags || [],
+									})}
 									size={232}
 								/>
 							</CardContent>
