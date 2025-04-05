@@ -46,6 +46,31 @@ interface UserModalProps {
 	onAction: (userId: string, action: "approve" | "reject") => void;
 }
 
+interface AddUserModalProps {
+	isOpen: boolean;
+	onClose: () => void;
+	onSubmit: (formData: AddUserFormData) => void;
+}
+
+interface AddOrganizerModalProps {
+	isOpen: boolean;
+	onClose: () => void;
+	onSubmit: (formData: AddOrganizerFormData) => void;
+}
+
+interface AddUserFormData {
+	name: string;
+	walletAddress: string;
+	country: string;
+	interests: string[];
+	meetingPreferences: string[];
+}
+
+interface AddOrganizerFormData {
+	name: string;
+	address: string;
+}
+
 const UserModal: React.FC<UserModalProps> = ({ user, onClose, onAction }) => {
 	if (!user) return null;
 
@@ -147,6 +172,289 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onAction }) => {
 	);
 };
 
+const AddUserModal = ({ isOpen, onClose, onSubmit }: AddUserModalProps) => {
+	const [formData, setFormData] = useState<AddUserFormData>({
+		name: '',
+		walletAddress: '',
+		country: '',
+		interests: [''],
+		meetingPreferences: ['']
+	});
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		onSubmit(formData);
+		setFormData({
+			name: '',
+			walletAddress: '',
+			country: '',
+			interests: [''],
+			meetingPreferences: ['']
+		});
+		onClose();
+	};
+
+	const addInterest = () => {
+		setFormData(prev => ({
+			...prev,
+			interests: [...prev.interests, '']
+		}));
+	};
+
+	const removeInterest = (index: number) => {
+		setFormData(prev => ({
+			...prev,
+			interests: prev.interests.filter((_, i) => i !== index)
+		}));
+	};
+
+	const updateInterest = (index: number, value: string) => {
+		setFormData(prev => ({
+			...prev,
+			interests: prev.interests.map((interest, i) => 
+				i === index ? value : interest
+			)
+		}));
+	};
+
+	const addMeetingPreference = () => {
+		setFormData(prev => ({
+			...prev,
+			meetingPreferences: [...prev.meetingPreferences, '']
+		}));
+	};
+
+	const removeMeetingPreference = (index: number) => {
+		setFormData(prev => ({
+			...prev,
+			meetingPreferences: prev.meetingPreferences.filter((_, i) => i !== index)
+		}));
+	};
+
+	const updateMeetingPreference = (index: number, value: string) => {
+		setFormData(prev => ({
+			...prev,
+			meetingPreferences: prev.meetingPreferences.map((pref, i) => 
+				i === index ? value : pref
+			)
+		}));
+	};
+
+	if (!isOpen) return null;
+
+	return (
+		<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+			<div className="bg-[#f8f5e6] rounded-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+				<div className="flex justify-between items-center mb-6">
+					<h3 className="text-xl font-medium text-[#5a3e2b]">Add User</h3>
+					<button onClick={onClose} className="text-[#5a3e2b]/60 hover:text-[#5a3e2b]">✕</button>
+				</div>
+				<form onSubmit={handleSubmit} className="space-y-6">
+					{/* Name Input */}
+					<div>
+						<label className="block text-sm text-[#5a3e2b] mb-2">Name</label>
+						<input
+							type="text"
+							value={formData.name}
+							onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+							className="w-full px-3 py-2 border-2 border-[#b89d65] rounded-lg bg-white
+								focus:outline-none focus:border-[#8c7851]"
+							placeholder="Enter name"
+							required
+						/>
+					</div>
+
+					{/* Wallet Address Input */}
+					<div>
+						<label className="block text-sm text-[#5a3e2b] mb-2">Wallet Address</label>
+						<input
+							type="text"
+							value={formData.walletAddress}
+							onChange={(e) => setFormData(prev => ({ ...prev, walletAddress: e.target.value }))}
+							className="w-full px-3 py-2 border-2 border-[#b89d65] rounded-lg bg-white
+								focus:outline-none focus:border-[#8c7851] font-mono"
+							placeholder="0x..."
+							required
+						/>
+					</div>
+
+					{/* Country Input */}
+					<div>
+						<label className="block text-sm text-[#5a3e2b] mb-2">Country</label>
+						<input
+							type="text"
+							value={formData.country}
+							onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+							className="w-full px-3 py-2 border-2 border-[#b89d65] rounded-lg bg-white
+								focus:outline-none focus:border-[#8c7851]"
+							placeholder="Enter country"
+							required
+						/>
+					</div>
+
+					{/* Interests Input */}
+					<div>
+						<label className="block text-sm text-[#5a3e2b] mb-2">Interests</label>
+						<div className="space-y-3">
+							{formData.interests.map((interest, index) => (
+								<div key={index} className="flex gap-2">
+									<input
+										type="text"
+										value={interest}
+										onChange={(e) => updateInterest(index, e.target.value)}
+										className="flex-1 px-3 py-2 border-2 border-[#b89d65] rounded-lg bg-white
+											focus:outline-none focus:border-[#8c7851]"
+										placeholder="Enter an interest"
+										required
+									/>
+									{index > 0 && (
+										<button
+											type="button"
+											onClick={() => removeInterest(index)}
+											className="px-3 py-2 text-red-500 hover:text-red-600"
+										>
+											✕
+										</button>
+									)}
+								</div>
+							))}
+							<button
+								type="button"
+								onClick={addInterest}
+								className="text-sm text-[#6b8e50] hover:text-[#5a7a42]"
+							>
+								+ Add another interest
+							</button>
+						</div>
+					</div>
+
+					{/* Meeting Preferences Input */}
+					<div>
+						<label className="block text-sm text-[#5a3e2b] mb-2">Who would you like to meet?</label>
+						<div className="space-y-3">
+							{formData.meetingPreferences.map((preference, index) => (
+								<div key={index} className="flex gap-2">
+									<input
+										type="text"
+										value={preference}
+										onChange={(e) => updateMeetingPreference(index, e.target.value)}
+										className="flex-1 px-3 py-2 border-2 border-[#b89d65] rounded-lg bg-white
+											focus:outline-none focus:border-[#8c7851]"
+										placeholder="Enter who you'd like to meet"
+										required
+									/>
+									{index > 0 && (
+										<button
+											type="button"
+											onClick={() => removeMeetingPreference(index)}
+											className="px-3 py-2 text-red-500 hover:text-red-600"
+										>
+											✕
+										</button>
+									)}
+								</div>
+							))}
+							<button
+								type="button"
+								onClick={addMeetingPreference}
+								className="text-sm text-[#6b8e50] hover:text-[#5a7a42]"
+							>
+								+ Add another preference
+							</button>
+						</div>
+					</div>
+
+					<div className="flex justify-end gap-3 pt-4">
+						<button
+							type="button"
+							onClick={onClose}
+							className="px-4 py-2 text-[#5a3e2b] hover:bg-[#f0e6c0] rounded-lg"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							className="px-4 py-2 bg-[#b89d65] hover:bg-[#a08a55] text-white rounded-lg"
+						>
+							Add User
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	);
+};
+
+const AddOrganizerModal = ({ isOpen, onClose, onSubmit }: AddOrganizerModalProps) => {
+	const [formData, setFormData] = useState({
+		name: '',
+		address: ''
+	});
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		onSubmit(formData);
+		setFormData({ name: '', address: '' });
+		onClose();
+	};
+
+	if (!isOpen) return null;
+
+	return (
+		<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+			<div className="bg-[#f8f5e6] rounded-xl p-6 w-full max-w-md">
+				<div className="flex justify-between items-center mb-4">
+					<h3 className="text-xl font-medium text-[#5a3e2b]">Add Organizer</h3>
+					<button onClick={onClose} className="text-[#5a3e2b]/60 hover:text-[#5a3e2b]">✕</button>
+				</div>
+				<form onSubmit={handleSubmit} className="space-y-4">
+					{/* Name Input */}
+					<div>
+						<label className="block text-sm text-[#5a3e2b] mb-2">Name</label>
+						<input
+							type="text"
+							value={formData.name}
+							onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+							className="w-full px-3 py-2 border-2 border-[#b89d65] rounded-lg bg-white
+								focus:outline-none focus:border-[#8c7851]"
+							placeholder="Enter name"
+							required
+						/>
+					</div>
+					{/* Wallet Address Input */}
+					<div>
+						<label className="block text-sm text-[#5a3e2b] mb-2">Wallet Address</label>
+						<input
+							type="text"
+							value={formData.address}
+							onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+							className="w-full px-3 py-2 border-2 border-[#b89d65] rounded-lg bg-white
+								focus:outline-none focus:border-[#8c7851] font-mono"
+							placeholder="0x..."
+							required
+						/>
+					</div>
+					<div className="flex justify-end gap-3">
+						<button
+							type="button"
+							onClick={onClose}
+							className="px-4 py-2 text-[#5a3e2b] hover:bg-[#f0e6c0] rounded-lg"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							className="px-4 py-2 bg-[#b89d65] hover:bg-[#a08a55] text-white rounded-lg"
+						>
+							Add Organizer
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	);
+};
+
 export default function DashboardPage() {
 	const params = useParams();
 	const router = useRouter();
@@ -158,6 +466,8 @@ export default function DashboardPage() {
 	const [selectedUser, setSelectedUser] = useState<EventUser | null>(null);
 	const [shareModalOpen, setShareModalOpen] = useState(false);
 	const [copySuccess, setCopySuccess] = useState(false);
+	const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+	const [isOrganizerModalOpen, setIsOrganizerModalOpen] = useState(false);
 
 	const getStatusDisplay = (status: EventUser["status"]) => {
 		if (status === "ACCEPTED") return "Approved";
@@ -367,6 +677,26 @@ export default function DashboardPage() {
 		}
 	};
 
+	const handleAddUser = async (formData: AddUserFormData) => {
+		try {
+			// TODO: Implement API call to add user with all fields
+			console.log('Adding user:', formData);
+			// Update local state if needed
+		} catch (error) {
+			console.error('Error adding user:', error);
+		}
+	};
+
+	const handleAddOrganizer = async (formData: AddOrganizerFormData) => {
+		try {
+			// TODO: Implement API call to add organizer
+			console.log('Adding organizer:', formData);
+			// Update local state if needed
+		} catch (error) {
+			console.error('Error adding organizer:', error);
+		}
+	};
+
 	return (
 		<div className="min-h-screen bg-[#f8f5e6]">
 			{/* Hero Section */}
@@ -484,7 +814,7 @@ export default function DashboardPage() {
 				</div>
 
 				{/* Interest Distribution */}
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
 					{/* Interest Groups Chart */}
 					<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
 						<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b] mb-4 sm:mb-6">
@@ -578,69 +908,125 @@ export default function DashboardPage() {
 					</div>
 				</div>
 
-				{/* Registered Users Section - Moved to bottom */}
-				<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65] mt-6 sm:mt-12">
-					<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b] mb-4 sm:mb-6">
-						Registered Users
-					</h2>
-					<div className="overflow-x-auto -mx-4 sm:mx-0">
-						<div className="inline-block min-w-full align-middle">
-							<table className="min-w-full">
-								<thead>
-									<tr className="text-left text-[#5a3e2b]/60">
-										<th className="pb-3 sm:pb-4 pl-4 sm:pl-0 pr-2 sm:pr-4 text-xs sm:text-sm">Name</th>
-										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">Wallet</th>
-										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">Status</th>
-										<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">Registered</th>
-										<th className="pb-3 sm:pb-4 pl-2 sm:pl-4 pr-4 sm:pr-0 text-xs sm:text-sm">Actions</th>
-									</tr>
-								</thead>
-								<tbody>
-									{eventData.eventUsers.map((user) => (
-										<tr
-											key={user.id}
-											className="border-t border-[#b89d65]/20"
-										>
-											<td className="py-3 sm:py-4 pl-4 sm:pl-0 pr-2 sm:pr-4 text-xs sm:text-sm text-[#5a3e2b]">
-												{user.user.name || "Anonymous"}
-											</td>
-											<td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm text-[#5a3e2b] font-mono">
-												{user.user.address.slice(0, 4)}...
-												{user.user.address.slice(-4)}
-											</td>
-											<td className="py-3 sm:py-4 px-2 sm:px-4">
-												<span
-													className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${
-														user.status === "ACCEPTED"
-															? "bg-green-100 text-green-800"
-															: user.status ===
-															  "REJECTED"
-															? "bg-red-100 text-red-800"
-															: "bg-yellow-100 text-yellow-800"
-													}`}
-												>
-													{getStatusDisplay(user.status)}
-												</span>
-											</td>
-											<td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm text-[#5a3e2b]/60 hidden sm:table-cell">
-												{new Date(
-													user.createdAt
-												).toLocaleDateString()}
-											</td>
-											<td className="py-3 sm:py-4 pl-2 sm:pl-4 pr-4 sm:pr-0">
-												<button
-													onClick={() =>
-														setSelectedUser(user)
-													}
-													className="text-[#6b8e50] hover:text-[#5a7a42]"
-												>
-													<EyeIcon className="w-5 h-5" />
-												</button>
-											</td>
+				{/* Users and Organizers Grid */}
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mt-8 sm:mt-12">
+					{/* Organizers Section */}
+					<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
+						<div className="flex justify-between items-center mb-4 sm:mb-6">
+							<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
+								Organizers
+							</h2>
+							<button
+								onClick={() => setIsOrganizerModalOpen(true)}
+								className="px-3 py-1.5 bg-[#b89d65] hover:bg-[#a08a55] text-white 
+									rounded-lg text-sm flex items-center gap-2"
+							>
+								Add Organizer
+							</button>
+						</div>
+						<div className="overflow-x-auto -mx-4 sm:mx-0">
+							<div className="inline-block min-w-full align-middle">
+								<table className="min-w-full">
+									<thead>
+										<tr className="text-left text-[#5a3e2b]/60">
+											<th className="pb-3 sm:pb-4 pl-4 sm:pl-0 pr-2 sm:pr-4 text-xs sm:text-sm">Name</th>
+											<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">Wallet</th>
 										</tr>
-									))}
-								</tbody>
-							</table>
+									</thead>
+									<tbody>
+										{eventData.organizers.map((organizer, index) => (
+											<tr
+												key={index}
+												className="border-t border-[#b89d65]/20"
+											>
+												<td className="py-3 sm:py-4 pl-4 sm:pl-0 pr-2 sm:pr-4 text-xs sm:text-sm text-[#5a3e2b]">
+													{organizer.name || "Anonymous"}
+												</td>
+												<td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm text-[#5a3e2b] font-mono">
+													{organizer.address.slice(0, 4)}...
+													{organizer.address.slice(-4)}
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+
+					{/* Registered Users Section */}
+					<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
+						<div className="flex justify-between items-center mb-4 sm:mb-6">
+							<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
+								Registered Users
+							</h2>
+							<button
+								onClick={() => setIsUserModalOpen(true)}
+								className="px-3 py-1.5 bg-[#b89d65] hover:bg-[#a08a55] text-white 
+									rounded-lg text-sm flex items-center gap-2"
+							>
+								Add User
+							</button>
+						</div>
+						<div className="overflow-x-auto -mx-4 sm:mx-0">
+							<div className="inline-block min-w-full align-middle">
+								<table className="min-w-full">
+									<thead>
+										<tr className="text-left text-[#5a3e2b]/60">
+											<th className="pb-3 sm:pb-4 pl-4 sm:pl-0 pr-2 sm:pr-4 text-xs sm:text-sm">Name</th>
+											<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">Wallet</th>
+											<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm">Status</th>
+											<th className="pb-3 sm:pb-4 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">Registered</th>
+											<th className="pb-3 sm:pb-4 pl-2 sm:pl-4 pr-4 sm:pr-0 text-xs sm:text-sm">Actions</th>
+										</tr>
+									</thead>
+									<tbody>
+										{eventData.eventUsers.map((user) => (
+											<tr
+												key={user.id}
+												className="border-t border-[#b89d65]/20"
+											>
+												<td className="py-3 sm:py-4 pl-4 sm:pl-0 pr-2 sm:pr-4 text-xs sm:text-sm text-[#5a3e2b]">
+													{user.user.name || "Anonymous"}
+												</td>
+												<td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm text-[#5a3e2b] font-mono">
+													{user.user.address.slice(0, 4)}...
+													{user.user.address.slice(-4)}
+												</td>
+												<td className="py-3 sm:py-4 px-2 sm:px-4">
+													<span
+														className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${
+															user.status === "ACCEPTED"
+																? "bg-green-100 text-green-800"
+																: user.status ===
+																  "REJECTED"
+																? "bg-red-100 text-red-800"
+																: "bg-yellow-100 text-yellow-800"
+														}`}
+													>
+														{getStatusDisplay(user.status)}
+													</span>
+												</td>
+												<td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm text-[#5a3e2b]/60 hidden sm:table-cell">
+													{new Date(
+														user.createdAt
+													).toLocaleDateString()}
+												</td>
+												<td className="py-3 sm:py-4 pl-2 sm:pl-4 pr-4 sm:pr-0">
+													<button
+														onClick={() =>
+															setSelectedUser(user)
+														}
+														className="text-[#6b8e50] hover:text-[#5a7a42]"
+													>
+														<EyeIcon className="w-5 h-5" />
+													</button>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -654,6 +1040,17 @@ export default function DashboardPage() {
 					onAction={handleUserAction}
 				/>
 			)}
+
+			<AddUserModal
+				isOpen={isUserModalOpen}
+				onClose={() => setIsUserModalOpen(false)}
+				onSubmit={handleAddUser}
+			/>
+			<AddOrganizerModal
+				isOpen={isOrganizerModalOpen}
+				onClose={() => setIsOrganizerModalOpen(false)}
+				onSubmit={handleAddOrganizer}
+			/>
 		</div>
 	);
 }
