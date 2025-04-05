@@ -8,10 +8,20 @@ import {
 	XMarkIcon,
 	UserPlusIcon,
 } from "@heroicons/react/24/outline";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConnectionCard } from "@/components/common/connectionCard";
+import { useParams, useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
+import { getEventBySlug } from "@/actions/events.action";
+import { PrivyLoginButton } from "@/components/common/connectbtn";
+import {
+	getPendingRequests,
+	updateConnectionStatus,
+	getRecentConnections,
+} from "@/actions/connections.action";
+import { useToast } from "@/hooks/use-toast";
 
-// Define our local Connection interface to match the one expected by ConnectionCard
 interface Connection {
 	id: string;
 	address: string;
@@ -20,67 +30,224 @@ interface Connection {
 	status: "accepted" | "pending" | "rejected";
 	timestamp: string;
 	xpEarned?: number;
+	type?: "sent" | "received";
 }
 
 const truncateAddress = (address: string) => {
 	return `${address.slice(0, 5)}...${address.slice(-5)}`;
 };
 
-// Mock data for demonstration - updated with string IDs
-const mockConnections: Connection[] = [
-	{
-		id: "1",
-		address: "0x1234567890abcdef1234567890abcdef12345678",
-		name: "Alice",
-		matchedInterests: ["DeFi", "NFTs", "Gaming"],
-		status: "accepted",
-		timestamp: new Date().toISOString(),
-		xpEarned: 50,
-	},
-	{
-		id: "2",
-		address: "0xabcdef1234567890abcdef1234567890abcdef12",
-		name: "Bob",
-		matchedInterests: ["DAOs", "DeFi"],
-		status: "pending",
-		timestamp: new Date().toISOString(),
-	},
-	{
-		id: "3",
-		address: "0x7890abcdef1234567890abcdef1234567890abcd",
-		name: "Charlie",
-		matchedInterests: ["Gaming", "NFTs"],
-		status: "rejected",
-		timestamp: new Date().toISOString(),
-	},
-];
-
 export default function InteractionsPage() {
-	const [connections, setConnections] =
-		useState<Connection[]>(mockConnections);
-	const pendingRequests = connections.filter(
-		(conn) => conn.status === "pending"
+	const router = useRouter();
+	const params = useParams();
+	const { user, ready, authenticated, login } = usePrivy();
+	const [event, setEvent] = useState<any>(null);
+	const [isRegistered, setIsRegistered] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const eventSlug = params.eventname as string;
+	const [pendingRequests, setPendingRequests] = useState<Connection[]>([]);
+	const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+	const [recentConnections, setRecentConnections] = useState<Connection[]>(
+		[]
 	);
+	const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+	const { toast } = useToast();
 
-	const handleAcceptRequest = (requestId: string) => {
-		console.log("Accepting request:", requestId);
-		setConnections(
-			connections.map((conn) =>
-				conn.id === requestId
-					? { ...conn, status: "accepted", xpEarned: 50 }
-					: conn
-			)
-		);
+	useEffect(() => {
+		const checkRegistration = async () => {
+			if (ready) {
+				if (!authenticated) {
+					setLoading(false);
+					return;
+				}
+
+				if (user) {
+					try {
+						const eventData = await getEventBySlug(eventSlug);
+						setEvent(eventData);
+
+						if (user?.wallet?.address && eventData?.eventUsers) {
+							const userRegistered = eventData.eventUsers.some(
+								(eu: any) => eu.userId === user.wallet?.address
+							);
+							setIsRegistered(userRegistered);
+						}
+					} catch (error) {
+						console.error("Error checking registration:", error);
+					} finally {
+						setLoading(false);
+					}
+				}
+			}
+		};
+
+		checkRegistration();
+	}, [ready, user, eventSlug, authenticated]);
+
+	useEffect(() => {
+		if (!loading && authenticated && !isRegistered && ready) {
+			router.push(`/events/${eventSlug}/register`);
+		}
+	}, [isRegistered, loading, ready, router, eventSlug, authenticated]);
+
+	const fetchPendingRequests = async () => {
+		if (!user?.wallet?.address || !event?.id) return;
+
+		try {
+			setIsLoadingRequests(true);
+			const result = await getPendingRequests({
+				userId: user.wallet.address,
+				eventId: event.id,
+			});
+
+			if (result.success && result.data) {
+				setPendingRequests(result.data as Connection[]);
+			} else {
+				console.error(
+					"Failed to fetch pending requests:",
+					result.error
+				);
+				toast({
+					title: "Error",
+					description:
+						result.error || "Failed to fetch pending requests",
+					variant: "destructive",
+				});
+			}
+		} catch (error) {
+			console.error("Error fetching pending requests:", error);
+		} finally {
+			setIsLoadingRequests(false);
+		}
 	};
 
-	const handleRejectRequest = (requestId: string) => {
-		console.log("Rejecting request:", requestId);
-		setConnections(
-			connections.map((conn) =>
-				conn.id === requestId ? { ...conn, status: "rejected" } : conn
-			)
-		);
+	const fetchRecentConnections = async () => {
+		if (!user?.wallet?.address || !event?.id) return;
+
+		try {
+			setIsLoadingRecent(true);
+			const result = await getRecentConnections({
+				userId: user.wallet.address,
+				eventId: event.id,
+			});
+
+			if (result.success && result.data) {
+				setRecentConnections(result.data as Connection[]);
+			} else {
+				console.error(
+					"Failed to fetch recent connections:",
+					result.error
+				);
+			}
+		} catch (error) {
+			console.error("Error fetching recent connections:", error);
+		} finally {
+			setIsLoadingRecent(false);
+		}
 	};
+
+	useEffect(() => {
+		if (event?.id && user?.wallet?.address && isRegistered) {
+			fetchPendingRequests();
+			fetchRecentConnections();
+		}
+	}, [event?.id, user?.wallet?.address, isRegistered]);
+
+	const handleAcceptRequest = async (id: string) => {
+		if (!event?.id) return;
+
+		try {
+			const result = await updateConnectionStatus({
+				connectionId: id,
+				status: "ACCEPTED",
+				eventId: event.id,
+			});
+
+			if (result.success) {
+				toast({
+					title: "Success",
+					description: "Connection request accepted!",
+					variant: "default",
+				});
+				fetchPendingRequests();
+				fetchRecentConnections();
+			} else {
+				toast({
+					title: "Error",
+					description: result.error || "Failed to accept request",
+					variant: "destructive",
+				});
+			}
+		} catch (error) {
+			console.error("Error accepting request:", error);
+			toast({
+				title: "Error",
+				description: "Failed to accept request",
+				variant: "destructive",
+			});
+		}
+	};
+
+	const handleRejectRequest = async (id: string) => {
+		if (!event?.id) return;
+
+		try {
+			const result = await updateConnectionStatus({
+				connectionId: id,
+				status: "REJECTED",
+				eventId: event.id,
+			});
+
+			if (result.success) {
+				toast({
+					title: "Success",
+					description: "Connection request rejected",
+					variant: "default",
+				});
+				fetchPendingRequests();
+			} else {
+				toast({
+					title: "Error",
+					description: result.error || "Failed to reject request",
+					variant: "destructive",
+				});
+			}
+		} catch (error) {
+			console.error("Error rejecting request:", error);
+			toast({
+				title: "Error",
+				description: "Failed to reject request",
+				variant: "destructive",
+			});
+		}
+	};
+
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-[#f8f5e6] p-4 sm:p-8 flex items-center justify-center">
+				<Loader2 className="h-8 w-8 animate-spin text-[#5a3e2b]" />
+			</div>
+		);
+	}
+
+	if (!authenticated) {
+		return (
+			<div className="min-h-screen bg-[#f8f5e6] p-4 sm:p-8 flex flex-col items-center justify-center gap-4">
+				<h2 className="text-xl font-medium text-[#5a3e2b]">
+					Please connect your wallet to continue
+				</h2>
+				<PrivyLoginButton />
+			</div>
+		);
+	}
+
+	if (!isRegistered) {
+		return null; // Will redirect in useEffect
+	}
+
+	const acceptedConnections = recentConnections.filter(
+		(conn) => conn.status === "accepted"
+	);
 
 	return (
 		<div className="min-h-screen bg-[#f8f5e6] p-4 sm:p-8">
@@ -89,14 +256,12 @@ export default function InteractionsPage() {
 					Your <span className="text-[#6b8e50]">Interactions</span>
 				</h1>
 
-				{/* Stats Overview - Updated for mobile */}
+				{/* Stats Overview */}
 				<div className="grid grid-cols-3 gap-2 sm:gap-6 mb-8 sm:mb-12">
 					{[
 						{
 							label: "Total Connections",
-							value: connections
-								.filter((c) => c.status === "accepted")
-								.length.toString(),
+							value: acceptedConnections.length.toString(),
 						},
 						{
 							label: "Pending Requests",
@@ -104,7 +269,7 @@ export default function InteractionsPage() {
 						},
 						{
 							label: "XP from Connections",
-							value: connections
+							value: acceptedConnections
 								.reduce(
 									(sum, conn) => sum + (conn.xpEarned || 0),
 									0
@@ -126,71 +291,192 @@ export default function InteractionsPage() {
 					))}
 				</div>
 
-				{/* Incoming Requests Section */}
-				{pendingRequests.length > 0 && (
-					<div className="bg-[#f0e6c0] rounded-xl border-2 border-[#b89d65] overflow-hidden mb-8">
-						<div className="p-4 sm:p-6">
-							<div className="flex items-center gap-2 mb-4 sm:mb-6">
-								<UserPlusIcon className="w-6 h-6 text-[#6b8e50]" />
-								<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
-									Incoming Requests
-								</h2>
+				{isLoadingRequests ? (
+					<div className="w-full flex justify-center py-8">
+						<Loader2 className="h-8 w-8 animate-spin text-[#5a3e2b]" />
+					</div>
+				) : (
+					<div className="space-y-8">
+						{/* Received Requests Section */}
+						{pendingRequests.filter((r) => r.type === "received")
+							.length > 0 && (
+							<div className="bg-[#f0e6c0] rounded-xl border-2 border-[#b89d65] overflow-hidden mb-8">
+								<div className="p-4 sm:p-6">
+									<div className="flex items-center gap-2 mb-4 sm:mb-6">
+										<UserPlusIcon className="w-6 h-6 text-[#6b8e50]" />
+										<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
+											Incoming Requests (
+											{
+												pendingRequests.filter(
+													(r) => r.type === "received"
+												).length
+											}
+											)
+										</h2>
+									</div>
+									<div className="space-y-4 sm:space-y-6">
+										{pendingRequests
+											.filter(
+												(connection) =>
+													connection.type ===
+													"received"
+											)
+											.map((connection) => (
+												<ConnectionCard
+													key={connection.id}
+													connection={connection}
+													truncateAddress={
+														truncateAddress
+													}
+													onAccept={() =>
+														handleAcceptRequest(
+															connection.id
+														)
+													}
+													onReject={() =>
+														handleRejectRequest(
+															connection.id
+														)
+													}
+												/>
+											))}
+									</div>
+								</div>
 							</div>
-							<div className="space-y-4 sm:space-y-6">
-								{pendingRequests.map((connection) => (
-									<ConnectionCard
-										key={connection.id}
-										connection={connection}
-										truncateAddress={truncateAddress}
-										onAccept={() =>
-											handleAcceptRequest(connection.id)
-										}
-										onReject={() =>
-											handleRejectRequest(connection.id)
-										}
-									/>
-								))}
+						)}
+
+						{/* Sent Requests Section */}
+						{pendingRequests.filter((r) => r.type === "sent")
+							.length > 0 && (
+							<div className="bg-[#f0e6c0] rounded-xl border-2 border-[#b89d65] overflow-hidden mb-8">
+								<div className="p-4 sm:p-6">
+									<div className="flex items-center gap-2 mb-4 sm:mb-6">
+										<UserPlusIcon className="w-6 h-6 text-[#6b8e50]" />
+										<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
+											Sent Requests (
+											{
+												pendingRequests.filter(
+													(r) => r.type === "sent"
+												).length
+											}
+											)
+										</h2>
+									</div>
+									<div className="space-y-4 sm:space-y-6">
+										{pendingRequests
+											.filter(
+												(connection) =>
+													connection.type === "sent"
+											)
+											.map((connection) => (
+												<ConnectionCard
+													key={connection.id}
+													connection={connection}
+													truncateAddress={
+														truncateAddress
+													}
+													isPending
+												/>
+											))}
+									</div>
+								</div>
 							</div>
-						</div>
+						)}
+
+						{/* Recent Connections Section */}
+						{(isLoadingRecent || recentConnections.length > 0) && (
+							<div className="bg-[#f0e6c0] rounded-xl border-2 border-[#b89d65] overflow-hidden">
+								<div className="p-4 sm:p-6">
+									<div className="flex items-center gap-2 mb-4 sm:mb-6">
+										<CheckCircleIcon className="w-6 h-6 text-[#6b8e50]" />
+										<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
+											Recent Connections
+										</h2>
+									</div>
+									{isLoadingRecent ? (
+										<div className="w-full flex justify-center py-8">
+											<Loader2 className="h-8 w-8 animate-spin text-[#5a3e2b]" />
+										</div>
+									) : (
+										<div className="space-y-8">
+											{/* Received Connections */}
+											{recentConnections.filter(
+												(c) => c.type === "received"
+											).length > 0 && (
+												<div>
+													<h3 className="text-lg font-medium text-[#5a3e2b] mb-4">
+														Received Connections
+													</h3>
+													<div className="space-y-4">
+														{recentConnections
+															.filter(
+																(connection) =>
+																	connection.type ===
+																	"received"
+															)
+															.map(
+																(
+																	connection
+																) => (
+																	<ConnectionCard
+																		key={
+																			connection.id
+																		}
+																		connection={
+																			connection
+																		}
+																		truncateAddress={
+																			truncateAddress
+																		}
+																	/>
+																)
+															)}
+													</div>
+												</div>
+											)}
+
+											{/* Sent Connections */}
+											{recentConnections.filter(
+												(c) => c.type === "sent"
+											).length > 0 && (
+												<div>
+													<h3 className="text-lg font-medium text-[#5a3e2b] mb-4">
+														Sent Connections
+													</h3>
+													<div className="space-y-4">
+														{recentConnections
+															.filter(
+																(connection) =>
+																	connection.type ===
+																	"sent"
+															)
+															.map(
+																(
+																	connection
+																) => (
+																	<ConnectionCard
+																		key={
+																			connection.id
+																		}
+																		connection={
+																			connection
+																		}
+																		truncateAddress={
+																			truncateAddress
+																		}
+																	/>
+																)
+															)}
+													</div>
+												</div>
+											)}
+										</div>
+									)}
+								</div>
+							</div>
+						)}
 					</div>
 				)}
-
-				{/* All Connections List section */}
-				<div className="bg-[#f0e6c0] rounded-xl border-2 border-[#b89d65] overflow-hidden">
-					<div className="p-4 sm:p-6">
-						<div className="flex items-center gap-2 mb-4 sm:mb-6">
-							<CheckCircleIcon className="w-6 h-6 text-[#6b8e50]" />
-							<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
-								All Connections
-							</h2>
-						</div>
-						<div className="space-y-4 sm:space-y-6">
-							{connections.map((connection) => (
-								<ConnectionCard
-									key={connection.id}
-									connection={connection}
-									truncateAddress={truncateAddress}
-									onAccept={
-										connection.status === "pending"
-											? () =>
-													handleAcceptRequest(
-														connection.id
-													)
-											: undefined
-									}
-									onReject={
-										connection.status === "pending"
-											? () =>
-													handleRejectRequest(
-														connection.id
-													)
-											: undefined
-									}
-								/>
-							))}
-						</div>
-					</div>
-				</div>
 			</div>
 		</div>
 	);

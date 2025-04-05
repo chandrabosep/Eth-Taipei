@@ -94,7 +94,6 @@ export default function page() {
 	const [showRequestDialog, setShowRequestDialog] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const address = "0x1234567890123456789012345678901234567890";
 	const router = useRouter();
 	const params = useParams();
 	const { user, ready, authenticated, login } = usePrivy();
@@ -351,7 +350,7 @@ export default function page() {
 
 	return (
 		<div>
-			<div className="w-full h-full flex flex-col items-center pt-20">
+			<div className="w-full h-full flex flex-col items-center pt-16 md:pt-20">
 				<Tabs defaultValue="qr" className="mb-8">
 					<TabsList className="flex">
 						<TabsTrigger
@@ -428,7 +427,7 @@ export default function page() {
 						<Loader2Icon className="h-8 w-8 animate-spin text-[#5a3e2b]" />
 					</div>
 				) : (
-					<div className="w-full max-w-md space-y-8">
+					<div className="w-11/12 md:w-full max-w-md space-y-8">
 						{/* Received Requests */}
 						{pendingRequests.filter((r) => r.type === "received")
 							.length > 0 && (

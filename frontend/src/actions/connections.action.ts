@@ -84,8 +84,8 @@ export async function sendConnectionRequest({
 		});
 
 		revalidatePath(`/events/${eventId}`);
-		return { 
-			success: true, 
+		return {
+			success: true,
 			data: connection,
 			message: "Connection request sent successfully",
 			showToast: true,
@@ -173,8 +173,8 @@ export async function getPendingRequests({
 			};
 		});
 
-		return { 
-			success: true, 
+		return {
+			success: true,
 			data: formattedRequests,
 			showToast: false,
 		};
@@ -208,10 +208,13 @@ export async function updateConnectionStatus({
 		});
 
 		revalidatePath(`/events/${eventId}`);
-		return { 
-			success: true, 
+		return {
+			success: true,
 			data: connection,
-			message: status === "ACCEPTED" ? "Connection accepted" : "Connection rejected",
+			message:
+				status === "ACCEPTED"
+					? "Connection accepted"
+					: "Connection rejected",
 			showToast: true,
 		};
 	} catch (error) {
@@ -268,11 +271,13 @@ export async function getRecentConnections({
 				sender: {
 					include: {
 						user: true,
+						event: true,
 					},
 				},
 				receiver: {
 					include: {
 						user: true,
+						event: true,
 					},
 				},
 			},
@@ -288,20 +293,24 @@ export async function getRecentConnections({
 			const otherUser = isSender
 				? connection.receiver
 				: connection.sender;
+			const otherUserEventUser = isSender
+				? connection.receiver
+				: connection.sender;
 
 			return {
 				id: connection.id,
 				address: otherUser.user.address,
 				name: otherUser.user.name || "Anonymous",
-				matchedInterests: otherUser.tags || [],
+				matchedInterests: otherUserEventUser.tags || [],
 				status: "accepted" as const,
 				timestamp: connection.updatedAt.toISOString(),
-				xpEarned: 50, // Placeholder XP value
+				type: isSender ? "sent" : "received",
+				xpEarned: 50, // You might want to make this dynamic based on your XP system
 			};
 		});
 
-		return { 
-			success: true, 
+		return {
+			success: true,
 			data: formattedConnections,
 			showToast: false,
 		};

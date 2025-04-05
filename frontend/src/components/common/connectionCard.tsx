@@ -39,7 +39,7 @@ export const ConnectionCard = ({
 	return (
 		<div
 			className={cn(
-				"bg-white rounded-lg shadow-md overflow-hidden border border-[#b89d65]",
+				"bg-white/20 rounded-lg shadow-md overflow-hidden border border-[#b89d65]",
 				style
 			)}
 		>
@@ -48,7 +48,7 @@ export const ConnectionCard = ({
 					<div className="flex items-center gap-3">
 						<UserCircleIcon className="w-10 h-10 text-[#6b8e50]" />
 						<div>
-							<h3 className="font-medium text-[#5a3e2b]">
+							<h3 className="font-medium text-[#b89d65]">
 								{connection.name}
 							</h3>
 							<p className="text-sm text-[#5a3e2b]/70">
