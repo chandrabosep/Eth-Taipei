@@ -2,11 +2,24 @@
 
 import { Button } from "@/components/ui/button";
 import { useLogin, usePrivy } from "@privy-io/react-auth";
-import { LogIn } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 
 export const PrivyLogoutButton = () => {
-	const { logout } = usePrivy();
-	return <Button onClick={logout}>Log out</Button>;
+	const { logout, user } = usePrivy();
+	
+	const formatAddress = (address: string | undefined) => {
+		if (!address) return "";
+		const firstFour = address.substring(0, 4);
+		const lastFour = address.substring(address.length - 4);
+		return `${firstFour}...${lastFour}`;
+	};
+	
+	return (
+		<Button onClick={logout} className="flex items-center">
+			<span className="mr-2">{formatAddress(user?.wallet?.address)}</span>
+			<LogOut className="mr-2 h-4 w-4" />
+		</Button>
+	);
 };
 
 type PrivyLoginButtonProps = {
@@ -18,7 +31,7 @@ export function PrivyLoginButton({
 	className = "bg-orange-500 text-white hover:bg-orange-600",
 	variant = "contained",
 }: PrivyLoginButtonProps) {
-	const { ready, authenticated } = usePrivy();
+	const { ready, authenticated, user, logout } = usePrivy();
 	const { login } = useLogin({
 		onError: (error) => {
 			console.error("Login error:", error);

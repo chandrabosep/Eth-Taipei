@@ -7,16 +7,7 @@ export default function Nav() {
 
 	return (
 		<div className="flex justify-between items-center p-4">
-			{authenticated ? (
-				<div className="flex items-center gap-4">
-					<span className="text-sm font-medium truncate max-w-[200px]">
-						{user?.wallet?.address}
-					</span>
-					<PrivyLogoutButton />
-				</div>
-			) : (
-				<PrivyLoginButton />
-			)}
+			{authenticated ? <PrivyLogoutButton /> : <PrivyLoginButton />}
 		</div>
 	);
 }

@@ -22,6 +22,16 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
 			<PrivyProvider
 				appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
 				config={{
+					loginMethods: [
+						"email",
+						"wallet",
+						"twitter",
+						"google",
+						"discord",
+						"apple",
+						"farcaster",
+						"passkey",
+					],
 					appearance: {
 						theme: "light",
 						accentColor: "#676FFF",
@@ -30,6 +40,8 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
 					embeddedWallets: {
 						createOnLogin: "users-without-wallets",
 					},
+					defaultChain: baseSepolia,
+					supportedChains: [baseSepolia],
 				}}
 			>
 				<div className="flex flex-col min-h-screen">
