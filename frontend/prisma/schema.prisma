@@ -48,6 +48,7 @@ model EventUser {
   socials            Json? // Store social media links
   bio                String?    @db.Text
   qrCode             String? // QR code for scanning
+  nfcAddress         String? // Ethereum address of the associated NFC tag
   meetingPreferences String[] // Criteria for who they want to meet
   xp                 Int        @default(0) // Track user's XP in the event
   createdAt          DateTime   @default(now())

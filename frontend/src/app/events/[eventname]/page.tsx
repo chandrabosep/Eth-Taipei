@@ -11,13 +11,14 @@ import {
 } from "@/components/ui/card";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
-import { Loader2Icon, UserPlusIcon, X } from "lucide-react";
+import { Loader2, Loader2Icon, UserPlusIcon, X } from "lucide-react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { ConnectionCard } from "@/components/common/connectionCard";
 import { useParams, useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { getEventBySlug } from "@/actions/events.action";
 import { PrivyLoginButton } from "@/components/common/connectbtn";
+import { execHaloCmdWeb } from "@arx-research/libhalo/api/web";
 import {
 	sendConnectionRequest,
 	getPendingRequests,
@@ -127,7 +128,7 @@ const ConnectionRequestDialog = ({
 					>
 						{isSubmitting ? (
 							<>
-								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 								Sending...
 							</>
 						) : (
@@ -160,6 +161,7 @@ export default function page() {
 	const [isLoadingRecent, setIsLoadingRecent] = useState(false);
 	const { toast } = useToast();
 	const [quests, setQuests] = useState<Quest[]>([]);
+	const [isNfcScanning, setIsNfcScanning] = useState(false);
 
 	useEffect(() => {
 		const checkRegistration = async () => {
@@ -193,8 +195,10 @@ export default function page() {
 	}, [ready, user, eventSlug, authenticated]);
 
 	useEffect(() => {
-		if (!loading && authenticated && !isRegistered && ready) {
-			router.push(`/events/${eventSlug}/register`);
+		if (!loading && ready) {
+			if (authenticated && !isRegistered) {
+				router.push(`/events/${eventSlug}/register`);
+			}
 		}
 	}, [isRegistered, loading, ready, router, eventSlug, authenticated]);
 
@@ -501,6 +505,101 @@ export default function page() {
 		}
 	};
 
+	const handleNFCScan = async () => {
+		setIsNfcScanning(true);
+		console.log("Starting NFC scan...");
+
+		try {
+			const command = {
+				name: "sign",
+				keyNo: 1,
+				message: "0123",
+			};
+
+			const options = {
+				statusCallback: (cause: string) => {
+					console.log("NFC Status:", cause);
+					switch (cause) {
+						case "init":
+							toast({
+								description:
+									"Please tap your NFC tag to the back of your device...",
+								duration: 3000,
+							});
+							break;
+						case "retry":
+							toast({
+								title: "Scan Failed",
+								description:
+									"Please try tapping your tag again",
+								variant: "destructive",
+							});
+							break;
+						case "scanned":
+							toast({
+								title: "Success!",
+								description: "Tag scanned successfully",
+								variant: "default",
+							});
+							break;
+						default:
+							toast({
+								title: "Status",
+								description: cause,
+								variant: "default",
+							});
+					}
+				},
+			};
+
+			console.log("Executing NFC command...");
+
+			const response = await execHaloCmdWeb(command, options);
+			console.log("NFC Response:", response);
+
+			if (response.etherAddress) {
+				// Verify the NFC address is registered to a user in this event
+				const result = await fetch(
+					`/api/nfc/verify?nfcAddress=${response.etherAddress}&eventSlug=${eventSlug}`
+				).then((res) => res.json());
+
+				if (result.success && result.data) {
+					// If successful, set the scanned data in the same format as QR code scans
+					setScannedData(result.data);
+					setShowRequestDialog(true);
+					toast({
+						title: "Success",
+						description: "NFC user found!",
+						variant: "default",
+					});
+				} else {
+					toast({
+						title: "Not Found",
+						description:
+							result.error || "No user found with this NFC tag",
+						variant: "destructive",
+					});
+				}
+			}
+		} catch (error) {
+			console.error("NFC Scan Error:", error);
+			toast({
+				title: "Scan Failed",
+				description:
+					error instanceof Error
+						? error.message
+						: "Failed to scan NFC device",
+				variant: "destructive",
+			});
+		} finally {
+			setIsNfcScanning(false);
+		}
+	};
+
+	const handleRegisterNFC = () => {
+		router.push(`/events/${eventSlug}/nfc`);
+	};
+
 	const truncateAddress = (address: string) => {
 		return `${address.slice(0, 5)}...${address.slice(-5)}`;
 	};
@@ -544,6 +643,12 @@ export default function page() {
 							className="w-full rounded-md px-4 py-2 flex-1 data-[state=active]:bg-[#5a3e2b]/50 shadow-sm"
 						>
 							Scan QR
+						</TabsTrigger>
+						<TabsTrigger
+							value="nfc"
+							className="w-full rounded-md px-4 py-2 flex-1 data-[state=active]:bg-[#5a3e2b]/50 shadow-sm"
+						>
+							NFC
 						</TabsTrigger>
 					</TabsList>
 					<TabsContent value="qr" className="mt-4 min-w-64 min-h-64">
@@ -596,6 +701,55 @@ export default function page() {
 										}}
 										scanDelay={300}
 									/>
+								</div>
+							</CardContent>
+						</Card>
+					</TabsContent>
+					<TabsContent
+						value="nfc"
+						className="mt-4 min-w-[17.8rem] min-h-64"
+					>
+						<Card>
+							<CardHeader>
+								<CardTitle>NFC Connection</CardTitle>
+								<CardDescription>
+									Use NFC tags to connect with other attendees
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="flex flex-col items-center justify-center gap-4">
+								<div className="w-24 h-24 mb-2">
+									<img
+										src="https://cdn-icons-png.flaticon.com/512/4305/4305512.png"
+										alt="NFC Connection"
+										className="w-full h-full object-contain"
+									/>
+								</div>
+								<div className="space-y-4 w-full">
+									<Button
+										onClick={handleNFCScan}
+										disabled={isNfcScanning}
+										className={`w-full bg-[#6b8e50] text-white py-4 px-6 rounded-xl 
+										flex items-center justify-center gap-3 
+										${isNfcScanning ? "opacity-80 cursor-not-allowed" : "hover:bg-[#5a7a42]"} 
+										transition-all shadow-md`}
+									>
+										{isNfcScanning ? (
+											<>
+												<Loader2 className="h-5 w-5 animate-spin" />
+												Scanning...
+											</>
+										) : (
+											"Scan NFC Tag"
+										)}
+									</Button>
+
+									<Button
+										onClick={handleRegisterNFC}
+										variant="outline"
+										className="w-full border-[#b89d65] text-[#5a3e2b] hover:bg-[#f0e6c0]"
+									>
+										Register Your NFC Tag
+									</Button>
 								</div>
 							</CardContent>
 						</Card>
