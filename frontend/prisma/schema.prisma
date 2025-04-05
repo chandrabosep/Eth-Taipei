@@ -49,6 +49,7 @@ model EventUser {
   bio                String?    @db.Text
   qrCode             String? // QR code for scanning
   meetingPreferences String[] // Criteria for who they want to meet
+  xp                 Int        @default(0) // Track user's XP in the event
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
@@ -179,4 +180,5 @@ enum QuestionStatus {
   PENDING
   ANSWERED
   SKIPPED
+  COMPLETED
 }
