@@ -402,7 +402,7 @@ export default function page() {
 				variant: "destructive",
 			});
 		} finally {
-			setIsSubmitting(false);	
+			setIsSubmitting(false);
 		}
 	};
 

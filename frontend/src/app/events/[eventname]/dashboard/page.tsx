@@ -1081,13 +1081,13 @@ export default function DashboardPage() {
 					</div>
 
 					{/* Interest Distribution */}
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12 custom-scrollbar">
 						{/* Interest Groups Chart */}
-						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
+						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65] overflow-hidden">
 							<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b] mb-4 sm:mb-6">
 								Interest Distribution
 							</h2>
-							<div className="space-y-4 sm:space-y-6">
+							<div className="space-y-4 sm:space-y-6 max-h-[400px] overflow-y-auto pr-2">
 								{sortedInterestGroups.map((group, index) => (
 									<div key={index}>
 										<div className="flex justify-between mb-1 sm:mb-2">
@@ -1124,11 +1124,11 @@ export default function DashboardPage() {
 						</div>
 
 						{/* Activity Timeline */}
-						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
+						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65] overflow-hidden">
 							<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b] mb-4 sm:mb-6">
 								Recent Activity
 							</h2>
-							<div className="space-y-4 sm:space-y-6">
+							<div className="space-y-4 sm:space-y-6 max-h-[400px] overflow-y-auto pr-2">
 								{/* We'll keep the sample activity data for now */}
 								{[
 									{
@@ -1177,7 +1177,7 @@ export default function DashboardPage() {
 					</div>
 
 					{/* Users and Organizers Grid */}
-					<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mt-8 sm:mt-12">
+					<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mt-8 sm:mt-12 custom-scrollbar">
 						{/* Organizers Section */}
 						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
 							<div className="flex justify-between items-center mb-4 sm:mb-6">
