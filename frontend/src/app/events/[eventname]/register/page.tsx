@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { registerForEvent } from "@/actions/users.action";
 import { getEventBySlug } from "@/actions/events.action";
 import { usePrivy } from "@privy-io/react-auth";
+import { PrivyLoginButton } from "@/components/common/connectbtn";
 
 interface SocialProfiles {
 	twitter?: string;
@@ -25,7 +26,7 @@ interface FormData {
 export default function RegisterPage() {
 	const params = useParams();
 	const router = useRouter();
-	const { user } = usePrivy();
+	const { user, ready } = usePrivy();
 	const eventSlug = params.eventname as string;
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [event, setEvent] = useState<any>(null);
@@ -41,7 +42,7 @@ export default function RegisterPage() {
 					return;
 				}
 				setEvent(eventData);
-
+				
 				if (user?.wallet?.address && eventData.eventUsers) {
 					const isRegistered = eventData.eventUsers.some(
 						(eu: any) => eu.userId === user.wallet?.address
@@ -191,6 +192,36 @@ export default function RegisterPage() {
 		}));
 	};
 
+	// Show loading state while Privy is initializing
+	if (!ready) {
+		return (
+			<div className="min-h-screen bg-[#f8f5e6] flex items-center justify-center">
+				<div className="text-[#5a3e2b]">
+					Initializing wallet connection...
+				</div>
+			</div>
+		);
+	}
+
+	// If user is not connected, show login prompt
+	if (!user?.wallet?.address) {
+		return (
+			<div className="min-h-screen bg-[#f8f5e6] p-8">
+				<div className="max-w-2xl mx-auto bg-[#f0e6c0] rounded-xl shadow-lg p-6 border-2 border-[#b89d65] text-center">
+					<h1 className="text-3xl font-serif text-[#5a3e2b] mb-4">
+						Connect Wallet to Register
+					</h1>
+					<p className="text-[#5a3e2b] mb-6">
+						Please connect your wallet to register for this event.
+					</p>
+					<div className="flex justify-center">
+						<PrivyLoginButton />
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	if (isAlreadyRegistered) {
 		return (
 			<div className="min-h-screen bg-[#f8f5e6] p-8">
@@ -215,7 +246,7 @@ export default function RegisterPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-[#f8f5e6] p-8 pb-24">
+		<div className="min-h-screen bg-[#f8f5e6] p-8">
 			<div className="max-w-2xl mx-auto bg-[#f0e6c0] rounded-xl shadow-lg p-6 border-2 border-[#b89d65]">
 				<h1 className="text-3xl font-serif text-[#5a3e2b] mb-8">
 					Register for Event

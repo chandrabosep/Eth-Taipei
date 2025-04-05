@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Trophy, Users, User } from "lucide-react";
+import { Home, Trophy, Users, User, LayoutDashboard } from "lucide-react";
+import { useEventAdmin } from "@/hooks/useEventAdmin";
 
 interface BottomNavProps {
 	eventName: string;
@@ -10,8 +11,9 @@ interface BottomNavProps {
 export default function BottomNav({ eventName }: BottomNavProps) {
 	const router = useRouter();
 	const pathname = usePathname();
+	const { isAdmin, loading } = useEventAdmin(eventName);
 
-	const tabs = [
+	const baseTabs = [
 		{ name: "Home", icon: Home, path: `/events/${eventName}` },
 		{ name: "Quests", icon: Trophy, path: `/events/${eventName}/quests` },
 		{
@@ -22,10 +24,20 @@ export default function BottomNav({ eventName }: BottomNavProps) {
 		{ name: "Profile", icon: User, path: `/events/${eventName}/profile` },
 	];
 
+	const adminTab = {
+		name: "Dashboard",
+		icon: LayoutDashboard,
+		path: `/events/${eventName}/dashboard`,
+	};
+
+	const tabs = isAdmin ? [...baseTabs, adminTab] : baseTabs;
+
 	// Check if the current path matches any of our tab paths
 	const isActivePath = (path: string) => {
 		return pathname.startsWith(path);
 	};
+
+	if (loading) return null;
 
 	return (
 		<div className="fixed bottom-0 left-0 right-0 bg-[#f0e6c0] border-t-2 border-[#b89d65] md:hidden">

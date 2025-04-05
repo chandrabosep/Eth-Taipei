@@ -14,6 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Loader2Icon, UserPlusIcon } from "lucide-react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { ConnectionCard } from "@/components/common/connectionCard";
+import { useParams, useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
+import { getEventBySlug } from "@/actions/events.action";
+import { PrivyLoginButton } from "@/components/common/connectbtn";
 
 interface Connection {
 	id: number;
@@ -28,6 +32,50 @@ interface Connection {
 export default function page() {
 	const [scannedData, setScannedData] = useState<string | null>(null);
 	const address = "0x1234567890123456789012345678901234567890";
+	const router = useRouter();
+	const params = useParams();
+	const { user, ready, authenticated, login } = usePrivy();
+	const [event, setEvent] = useState<any>(null);
+	const [isRegistered, setIsRegistered] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const eventSlug = params.eventname as string;
+
+	useEffect(() => {
+		const checkRegistration = async () => {
+			if (ready) {
+				if (!authenticated) {
+					setLoading(false);
+					return;
+				}
+				
+				if (user) {
+					try {
+						const eventData = await getEventBySlug(eventSlug);
+						setEvent(eventData);
+						
+						if (user?.wallet?.address && eventData?.eventUsers) {
+							const userRegistered = eventData.eventUsers.some(
+								(eu: any) => eu.userId === user.wallet?.address
+							);
+							setIsRegistered(userRegistered);
+						}
+					} catch (error) {
+						console.error("Error checking registration:", error);
+					} finally {
+						setLoading(false);
+					}
+				}
+			}
+		};
+		
+		checkRegistration();
+	}, [ready, user, eventSlug, authenticated]);
+
+	useEffect(() => {
+		if (!loading && authenticated && !isRegistered && ready) {
+			router.push(`/events/${eventSlug}/register`);
+		}
+	}, [isRegistered, loading, ready, router, eventSlug, authenticated]);
 
 	// Mock data for demonstration
 	const [connections, setConnections] = useState<Connection[]>([
@@ -76,6 +124,27 @@ export default function page() {
 			)
 		);
 	};
+
+	if (loading) {
+		return (
+			<div className="w-full h-screen flex items-center justify-center">
+				<Loader2Icon className="h-8 w-8 animate-spin text-[#5a3e2b]" />
+			</div>
+		);
+	}
+
+	if (!authenticated) {
+		return (
+			<div className="w-full h-screen flex flex-col items-center justify-center gap-4">
+				<h2 className="text-xl font-medium text-[#5a3e2b]">Please connect your wallet to continue</h2>
+				<PrivyLoginButton />
+			</div>
+		);
+	}
+
+	if (!isRegistered) {
+		return null; // Will redirect in useEffect
+	}
 
 	return (
 		<div>
