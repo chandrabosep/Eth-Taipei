@@ -140,7 +140,8 @@ export async function generateQuestsForUser(
 				eventDescription: eventUser.event.description || "",
 				eventTags: eventUser.event.tags.join(", "),
 				userInterests: eventUser.tags.join(", "),
-				meetingPreferences: eventUser.meetingPreferences.join(", "),
+				meetingPreferences:
+					eventUser.meetingPreferences?.join(", ") || "",
 				userLocation: eventUser.user.country || "Unknown",
 				questCount: questCount.toString(),
 			});

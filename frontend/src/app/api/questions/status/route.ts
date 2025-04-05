@@ -16,6 +16,23 @@ export async function GET(request: NextRequest) {
 	}
 
 	try {
+		// First check if the eventUser exists
+		const eventUser = await prisma.eventUser.findUnique({
+			where: {
+				id: eventUserId,
+			},
+		});
+
+		if (!eventUser) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: "Event user not found",
+				},
+				{ status: 404 }
+			);
+		}
+
 		// Check if user has any questions
 		const questionCount = await prisma.userQuestion.count({
 			where: {

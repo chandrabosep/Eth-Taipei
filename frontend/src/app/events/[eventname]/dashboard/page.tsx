@@ -739,6 +739,46 @@ export default function DashboardPage() {
 			const response = await fetch(
 				`/api/questions/status?eventUserId=${eventUserId}`
 			);
+
+			if (!response.ok) {
+				// Handle non-2xx responses
+				const errorData = await response
+					.json()
+					.catch(() => ({ error: "Unknown error" }));
+				console.error(
+					`Error status ${response.status}: ${
+						errorData.error || "Unknown error"
+					}`
+				);
+
+				// Clear the polling state on API errors
+				setGeneratingQuestionsFor((prev) => ({
+					...prev,
+					[eventUserId]: false,
+				}));
+
+				// Clear the polling timer
+				if (questPollingTimers[eventUserId]) {
+					clearTimeout(questPollingTimers[eventUserId]);
+					setQuestPollingTimers((prev) => {
+						const newTimers = { ...prev };
+						delete newTimers[eventUserId];
+						return newTimers;
+					});
+				}
+
+				// Show error toast
+				toast({
+					title: "Error",
+					description:
+						errorData.error || "Failed to check question status",
+					variant: "destructive",
+					duration: 3000,
+				});
+
+				return;
+			}
+
 			const data = await response.json();
 
 			if (data.success && data.data.isComplete) {
@@ -781,10 +821,30 @@ export default function DashboardPage() {
 			}
 		} catch (error) {
 			console.error("Error checking question status:", error);
+
+			// Clear polling state on any error
 			setGeneratingQuestionsFor((prev) => ({
 				...prev,
 				[eventUserId]: false,
 			}));
+
+			// Clear the timer
+			if (questPollingTimers[eventUserId]) {
+				clearTimeout(questPollingTimers[eventUserId]);
+				setQuestPollingTimers((prev) => {
+					const newTimers = { ...prev };
+					delete newTimers[eventUserId];
+					return newTimers;
+				});
+			}
+
+			// Show error toast
+			toast({
+				title: "Error",
+				description: "Failed to check question status",
+				variant: "destructive",
+				duration: 3000,
+			});
 		}
 	};
 

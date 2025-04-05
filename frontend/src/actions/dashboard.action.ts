@@ -302,34 +302,47 @@ export async function updateUserStatus(
 		if (status === "ACCEPTED") {
 			// Just start the process but don't wait for it
 			// This prevents the function from timing out
-			Promise.resolve().then(async () => {
-				try {
-					console.log(
-						`Starting background quest generation for user ${updatedEventUser.id}`
-					);
-
-					const questResult = await generateQuestsForUser({
-						eventUserId: updatedEventUser.id,
-						eventId: eventId,
-						questCount: 3, // Default to 3 quests per user
-					});
-
-					if (!questResult.success) {
-						console.error(
-							"Background quest generation failed:",
-							questResult.error
-						);
-					} else {
+			Promise.resolve()
+				.then(async () => {
+					try {
 						console.log(
-							`Successfully generated ${
-								questResult.data?.length || 0
-							} quests in the background`
+							`Starting background quest generation for user ${updatedEventUser.id}`
 						);
+
+						const questResult = await generateQuestsForUser({
+							eventUserId: updatedEventUser.id,
+							eventId: eventId,
+							questCount: 3, // Default to 3 quests per user
+						});
+
+						if (!questResult.success) {
+							console.error(
+								"Background quest generation failed:",
+								questResult.error
+							);
+						} else {
+							console.log(
+								`Successfully generated ${
+									questResult.data?.length || 0
+								} quests in the background`
+							);
+						}
+					} catch (error) {
+						console.error(
+							"Background quest generation error:",
+							error
+						);
+						// Even if an error occurs, we don't want to reject the Promise
+						// as this could cause the Promise.resolve.then chain to crash
 					}
-				} catch (error) {
-					console.error("Background quest generation error:", error);
-				}
-			});
+				})
+				.catch((err) => {
+					// Catch any uncaught errors in the Promise chain
+					console.error(
+						"Uncaught error in background processing:",
+						err
+					);
+				});
 
 			// Return immediately with success to avoid timeout
 			return {
@@ -343,7 +356,13 @@ export async function updateUserStatus(
 		return { success: true, data: updatedEventUser };
 	} catch (error) {
 		console.error("Error updating user status:", error);
-		return { success: false, error: "Failed to update user status" };
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Failed to update user status",
+		};
 	}
 }
 

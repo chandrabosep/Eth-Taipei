@@ -8,7 +8,6 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { RunnableSequence } from "@langchain/core/runnables";
 import prisma from "@/lib/db";
 
-
 export async function registerForEvent({
 	userId,
 	eventId,
@@ -170,7 +169,7 @@ export async function generateUserQuestions(
 		const response = await chain.invoke({
 			eventName: eventUser.event.name,
 			interests: eventUser.tags.join(", "),
-			meetingPreferences: eventUser.meetingPreferences.join(", "),
+			meetingPreferences: eventUser.meetingPreferences?.join(", ") || "",
 		});
 
 		// Parse generated questions - handle AIMessage response
