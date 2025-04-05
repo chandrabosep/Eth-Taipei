@@ -10,124 +10,125 @@ datasource db {
 
 // Event model
 model Event {
-  id          String      @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
-  slug        String      @unique
-  description String?     @db.Text
+  slug        String   @unique
+  description String?  @db.Text
   startDate   DateTime
   endDate     DateTime
   pictureUrl  String?
   tags        String[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
-  // Relations
-  creatorAddress   String
-  eventUsers  EventUser[]
-  organizers Organizer[] // Added field for organizers
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  // Relations
+  creatorAddress String
+  eventUsers     EventUser[]
+  organizers     Organizer[] // Added field for organizers
 }
 
 // User model
 model User {
-  id        String      @id
+  id        String   @id
   name      String?
   country   String?
   address   String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
   eventUsers EventUser[]
 }
 
 // EventUser model - represents a user's profile for a specific event
 model EventUser {
-  id         String       @id @default(uuid())
-  status     UserStatus   @default(PENDING)
-  tags       String[]
-  socials    Json?        // Store social media links
-  bio        String?      @db.Text
-  qrCode     String?      // QR code for scanning
+  id                 String     @id @default(uuid())
+  status             UserStatus @default(PENDING)
+  tags               String[]
+  socials            Json? // Store social media links
+  bio                String?    @db.Text
+  qrCode             String? // QR code for scanning
   meetingPreferences String[] // Criteria for who they want to meet
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  
-  userId     String
-  user       User         @relation(fields: [userId], references: [id])
-  eventId    String
-  event      Event        @relation(fields: [eventId], references: [id])
-  sentRequests     Connection[] @relation("SentRequests")
-  receivedRequests Connection[] @relation("ReceivedRequests")
-  assignedQuests   UserQuest[]  // Quests assigned to this event user
-  
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  userId           String
+  user             User           @relation(fields: [userId], references: [id])
+  eventId          String
+  event            Event          @relation(fields: [eventId], references: [id])
+  sentRequests     Connection[]   @relation("SentRequests")
+  receivedRequests Connection[]   @relation("ReceivedRequests")
+  assignedQuests   UserQuest[] // Quests assigned to this event user
+  userQuestions    UserQuestion[] // Questions generated for this user
+
   @@unique([userId, eventId])
 }
 
 // Organizer model - represents an organizer for an event
 model Organizer {
-  id         String       @id @default(uuid())
-  address     String
-  role        String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
-  eventId    String
-  event      Event        @relation(fields: [eventId], references: [id])
+  id        String   @id @default(uuid())
+  address   String
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
 }
 
 // Connection model - represents connections between users at an event
 model Connection {
-  id               String         @id @default(uuid())
-  status           ConnectionStatus @default(PENDING)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  
+  id        String           @id @default(uuid())
+  status    ConnectionStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
   // Relations
-  senderId         String
-  sender           EventUser      @relation("SentRequests", fields: [senderId], references: [id])
-  receiverId       String
-  receiver         EventUser      @relation("ReceivedRequests", fields: [receiverId], references: [id])
-  
+  senderId   String
+  sender     EventUser @relation("SentRequests", fields: [senderId], references: [id])
+  receiverId String
+  receiver   EventUser @relation("ReceivedRequests", fields: [receiverId], references: [id])
+
   @@unique([senderId, receiverId])
 }
 
 // Quest model - represents challenges for users
 model Quest {
-  id          String      @id @default(uuid())
+  id          String   @id @default(uuid())
   title       String
-  description String      @db.Text
+  description String   @db.Text
   points      Int
   tags        String[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
+  metadata    Json? // Store success criteria, verification method, and other metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relations
-  userQuests  UserQuest[] // Users assigned to this quest
+  userQuests UserQuest[] // Users assigned to this quest
 }
 
 // UserQuest model - tracks quests assigned to users and their completion status
 model UserQuest {
-  id          String    @id @default(uuid())
+  id          String      @id @default(uuid())
   status      QuestStatus @default(ASSIGNED)
-  assignedAt  DateTime  @default(now())
+  assignedAt  DateTime    @default(now())
   completedAt DateTime?
-  
+
   // Relations
   questId     String
   quest       Quest     @relation(fields: [questId], references: [id])
   eventUserId String
   eventUser   EventUser @relation(fields: [eventUserId], references: [id])
-  
+
   @@unique([questId, eventUserId])
 }
 
 // Leaderboard model - tracks user rankings for events
 model Leaderboard {
-  id         String   @id @default(uuid())
-  eventId    String   @unique
-  rankings   Json     // Stores user rankings with scores
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  eventId   String   @unique
+  rankings  Json // Stores user rankings with scores
+  updatedAt DateTime @updatedAt
 }
 
 // Agent model - for the AI agent that generates and assigns quests
@@ -137,6 +138,21 @@ model Agent {
   description String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// UserQuestion model - stores questions generated based on user profile
+model UserQuestion {
+  id        String         @id @default(uuid())
+  question  String         @db.Text
+  answer    String?        @db.Text
+  status    QuestionStatus @default(PENDING)
+  metadata  Json? // Store additional metadata like generation context, interests used, etc.
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  // Relations
+  eventUserId String
+  eventUser   EventUser @relation(fields: [eventUserId], references: [id])
 }
 
 // Enums
@@ -157,4 +173,10 @@ enum QuestStatus {
   COMPLETED
   VERIFIED
   FAILED
+}
+
+enum QuestionStatus {
+  PENDING
+  ANSWERED
+  SKIPPED
 }

@@ -12,9 +12,11 @@ import {
 	XCircleIcon,
 	EyeIcon,
 	ClipboardIcon,
-} from "@heroicons/react/24/outline";
+	Loader2,
+} from "lucide-react";
 import { getEventBySlug, addOrganizer } from "@/actions/events.action";
 import { updateUserStatus } from "@/actions/dashboard.action";
+import { cn } from "@/lib/utils";
 
 interface EventUser {
 	id: string;
@@ -528,6 +530,7 @@ export default function DashboardPage() {
 	const [copySuccess, setCopySuccess] = useState(false);
 	const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 	const [isOrganizerModalOpen, setIsOrganizerModalOpen] = useState(false);
+	const [approvingUser, setApprovingUser] = useState<string | null>(null);
 
 	const getStatusDisplay = (status: EventUser["status"]) => {
 		if (status === "ACCEPTED") return "Approved";
@@ -701,22 +704,14 @@ export default function DashboardPage() {
 				throw new Error("Event ID not found");
 			}
 
-			// Show loading state
-			const actionText = action === "approve" ? "Approving" : "Rejecting";
-			const loadingMessage = document.createElement("div");
-			loadingMessage.className =
-				"fixed bottom-4 right-4 bg-[#6b8e50] text-white px-4 py-2 rounded-lg";
-			loadingMessage.textContent = `${actionText} user...`;
-			document.body.appendChild(loadingMessage);
+			// Set loading state
+			setApprovingUser(userId);
 
 			const result = await updateUserStatus(
 				eventData.id,
 				userId,
 				action === "approve" ? "ACCEPTED" : "REJECTED"
 			);
-
-			// Remove loading message
-			document.body.removeChild(loadingMessage);
 
 			if (!result.success) {
 				throw new Error(result.error || "Failed to update user status");
@@ -744,7 +739,7 @@ export default function DashboardPage() {
 				};
 			});
 
-			// Show success message with custom styling
+			// Show success message
 			const successMessage = document.createElement("div");
 			successMessage.className =
 				"fixed bottom-4 right-4 bg-[#6b8e50] text-white px-4 py-2 rounded-lg transition-opacity duration-500";
@@ -761,25 +756,27 @@ export default function DashboardPage() {
 				}, 500);
 			}, 3000);
 
+			// Close the modal
 			setSelectedUser(null);
-		} catch (error: any) {
+		} catch (error) {
 			console.error("Error updating user status:", error);
-
-			// Show error message with custom styling
 			const errorMessage = document.createElement("div");
 			errorMessage.className =
-				"fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg transition-opacity duration-500";
+				"fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg";
 			errorMessage.textContent =
-				error.message || "Failed to update user status";
+				error instanceof Error
+					? error.message
+					: "Failed to update user status";
 			document.body.appendChild(errorMessage);
 
-			// Remove error message after 3 seconds
 			setTimeout(() => {
 				errorMessage.style.opacity = "0";
 				setTimeout(() => {
 					document.body.removeChild(errorMessage);
 				}, 500);
 			}, 3000);
+		} finally {
+			setApprovingUser(null);
 		}
 	};
 
@@ -874,7 +871,10 @@ export default function DashboardPage() {
 						<div className="flex items-center gap-6">
 							<div className="w-24 h-24 rounded-lg overflow-hidden bg-[#f8f5e6] border-2 border-[#b89d65]">
 								<img
-									src={eventData.pictureUrl || "/event-fall.jpg"}
+									src={
+										eventData.pictureUrl ||
+										"/event-fall.jpg"
+									}
 									alt={eventData.name}
 									className="w-full h-full object-cover"
 								/>
@@ -1217,11 +1217,136 @@ export default function DashboardPage() {
 
 			{/* User Modal */}
 			{selectedUser && (
-				<UserModal
-					user={selectedUser}
-					onClose={() => setSelectedUser(null)}
-					onAction={handleUserAction}
-				/>
+				<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+					<div className="bg-[#f8f5e6] rounded-xl p-4 sm:p-8 w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto relative">
+						<div className="flex justify-between items-start mb-6">
+							<h3 className="text-xl sm:text-2xl font-serif text-[#5a3e2b]">
+								{selectedUser.user.name || "Anonymous"}
+							</h3>
+							<button
+								onClick={() => setSelectedUser(null)}
+								className="text-[#5a3e2b]/60 hover:text-[#5a3e2b]"
+							>
+								✕
+							</button>
+						</div>
+
+						<div className="space-y-6">
+							<div>
+								<p className="text-sm text-[#5a3e2b]/60">
+									Wallet Address
+								</p>
+								<p className="text-[#5a3e2b] font-mono text-xs sm:text-sm break-all">
+									{selectedUser.user.address}
+								</p>
+							</div>
+
+							<div>
+								<p className="text-sm text-[#5a3e2b]/60">
+									About
+								</p>
+								<p className="text-[#5a3e2b]">
+									{selectedUser.about ||
+										"No description provided"}
+								</p>
+							</div>
+
+							<div>
+								<p className="text-sm text-[#5a3e2b]/60">
+									Interests
+								</p>
+								<div className="flex flex-wrap gap-2 mt-2">
+									{selectedUser.tags?.map((tag, index) => (
+										<span
+											key={index}
+											className="px-3 py-1 bg-[#6b8e50]/10 text-[#6b8e50] rounded-full text-sm"
+										>
+											{tag}
+										</span>
+									))}
+								</div>
+							</div>
+
+							<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+								<div className="bg-[#f0e6c0] p-4 rounded-lg">
+									<p className="text-sm text-[#5a3e2b]/60">
+										XP Earned
+									</p>
+									<p className="text-xl font-bold text-[#5a3e2b]">
+										{selectedUser.xp || 0}
+									</p>
+								</div>
+								<div className="bg-[#f0e6c0] p-4 rounded-lg">
+									<p className="text-sm text-[#5a3e2b]/60">
+										Connections
+									</p>
+									<p className="text-xl font-bold text-[#5a3e2b]">
+										{selectedUser.connections?.length || 0}
+									</p>
+								</div>
+								<div className="bg-[#f0e6c0] p-4 rounded-lg">
+									<p className="text-sm text-[#5a3e2b]/60">
+										Quests
+									</p>
+									<p className="text-xl font-bold text-[#5a3e2b]">
+										{selectedUser.completedQuests?.length ||
+											0}
+									</p>
+								</div>
+							</div>
+
+							{selectedUser.status === "PENDING" && (
+								<div className="flex flex-col sm:flex-row gap-4 mt-8">
+									<button
+										onClick={() =>
+											handleUserAction(
+												selectedUser.id,
+												"approve"
+											)
+										}
+										disabled={
+											approvingUser === selectedUser.id
+										}
+										className={cn(
+											"flex-1 bg-[#6b8e50] text-white py-2 px-4 rounded-lg hover:bg-[#5a7a42] transition-colors relative",
+											approvingUser === selectedUser.id &&
+												"opacity-75"
+										)}
+									>
+										{approvingUser === selectedUser.id ? (
+											<>
+												<Loader2 className="h-5 w-5 animate-spin mx-auto" />
+												<span className="sr-only">
+													Approving...
+												</span>
+											</>
+										) : (
+											"Approve"
+										)}
+									</button>
+									<button
+										onClick={() =>
+											handleUserAction(
+												selectedUser.id,
+												"reject"
+											)
+										}
+										disabled={
+											approvingUser === selectedUser.id
+										}
+										className={cn(
+											"flex-1 bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors",
+											approvingUser === selectedUser.id &&
+												"opacity-75"
+										)}
+									>
+										Reject
+									</button>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
 			)}
 
 			<AddUserModal
