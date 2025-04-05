@@ -541,6 +541,13 @@ export default function DashboardPage() {
 	const [assigningQuests, setAssigningQuests] = useState(false);
 	const [questCount, setQuestCount] = useState(3);
 	const [showQuestCountModal, setShowQuestCountModal] = useState(false);
+	const [isLoadingAction, setIsLoadingAction] = useState(false);
+	const [generatingQuestionsFor, setGeneratingQuestionsFor] = useState<{
+		[key: string]: boolean;
+	}>({});
+	const [questPollingTimers, setQuestPollingTimers] = useState<{
+		[key: string]: NodeJS.Timeout;
+	}>({});
 
 	const getStatusDisplay = (status: EventUser["status"]) => {
 		if (status === "ACCEPTED") return "Approved";
@@ -705,74 +712,134 @@ export default function DashboardPage() {
 		.sort((a, b) => b.count - a.count)
 		.slice(0, 6);
 
+	// Add a cleanup function for polling timers
+	useEffect(() => {
+		return () => {
+			// Clean up all polling intervals when component unmounts
+			Object.values(questPollingTimers).forEach((timer) =>
+				clearTimeout(timer)
+			);
+		};
+	}, [questPollingTimers]);
+
+	// Function to check question generation status
+	const checkQuestionStatus = async (eventUserId: string) => {
+		try {
+			const response = await fetch(
+				`/api/questions/status?eventUserId=${eventUserId}`
+			);
+			const data = await response.json();
+
+			if (data.success && data.data.isComplete) {
+				// Questions have been generated successfully
+				console.log(`Questions generated for user ${eventUserId}`);
+				setGeneratingQuestionsFor((prev) => ({
+					...prev,
+					[eventUserId]: false,
+				}));
+
+				// Clear the polling timer
+				if (questPollingTimers[eventUserId]) {
+					clearTimeout(questPollingTimers[eventUserId]);
+					setQuestPollingTimers((prev) => {
+						const newTimers = { ...prev };
+						delete newTimers[eventUserId];
+						return newTimers;
+					});
+				}
+
+				// Show success toast
+				toast({
+					title: "Success",
+					description: `Generated ${data.data.questionCount} quests for user`,
+					duration: 3000,
+				});
+
+				// Refresh the user list to show updated status
+				fetchEventData();
+			} else {
+				// Continue polling if not complete
+				const timer = setTimeout(
+					() => checkQuestionStatus(eventUserId),
+					3000
+				);
+				setQuestPollingTimers((prev) => ({
+					...prev,
+					[eventUserId]: timer,
+				}));
+			}
+		} catch (error) {
+			console.error("Error checking question status:", error);
+			setGeneratingQuestionsFor((prev) => ({
+				...prev,
+				[eventUserId]: false,
+			}));
+		}
+	};
+
 	const handleUserAction = async (
 		userId: string,
 		action: "approve" | "reject"
 	) => {
+		setIsLoadingAction(true);
 		try {
-			if (!eventData?.id) {
-				throw new Error("Event ID not found");
-			}
-
-			// Set loading state
-			setApprovingUser(userId);
-
+			const status = action === "approve" ? "ACCEPTED" : "REJECTED";
 			const result = await updateUserStatus(
-				eventData.id,
+				eventData?.id || "",
 				userId,
-				action === "approve" ? "ACCEPTED" : "REJECTED"
+				status
 			);
 
-			if (!result.success) {
-				throw new Error(result.error || "Failed to update user status");
-			}
+			// Only start polling if this is an approval action
+			if (result.success && status === "ACCEPTED") {
+				// Mark as generating questions
+				setGeneratingQuestionsFor((prev) => ({
+					...prev,
+					[userId]: true,
+				}));
 
-			// Update local state
-			setEventData((prev) => {
-				if (!prev) return prev;
-				const updatedUsers = prev.eventUsers.map((user) => {
-					if (user.id === userId) {
-						return {
-							...user,
-							status:
-								action === "approve"
-									? ("ACCEPTED" as const)
-									: ("REJECTED" as const),
-						};
-					}
-					return user;
+				// Show in-progress toast
+				toast({
+					title: "Generating Quests",
+					description:
+						"Quest generation has started in the background",
+					duration: 3000,
 				});
 
-				return {
-					...prev,
-					eventUsers: updatedUsers,
-				};
-			});
+				// Start polling for status
+				checkQuestionStatus(userId);
+			}
 
-			// Show success message
-			toast({
-				title: "Success",
-				description: `User has been ${
-					action === "approve" ? "approved" : "rejected"
-				} successfully!`,
-				variant: "default",
-			});
+			if (result.success) {
+				// Show general success message
+				toast({
+					title: "Success",
+					description: `User ${
+						action === "approve" ? "approved" : "rejected"
+					} successfully`,
+					duration: 3000,
+				});
 
-			// Close the modal
-			setSelectedUser(null);
+				fetchEventData();
+				setSelectedUser(null);
+			} else {
+				toast({
+					title: "Error",
+					description: result.error || `Failed to ${action} user`,
+					variant: "destructive",
+					duration: 3000,
+				});
+			}
 		} catch (error) {
 			console.error("Error updating user status:", error);
 			toast({
 				title: "Error",
-				description:
-					error instanceof Error
-						? error.message
-						: "Failed to update user status",
+				description: `Failed to ${action} user`,
 				variant: "destructive",
+				duration: 3000,
 			});
-		} finally {
-			setApprovingUser(null);
 		}
+		setIsLoadingAction(false);
 	};
 
 	const copyEventLink = async () => {
@@ -1412,6 +1479,14 @@ export default function DashboardPage() {
 									</p>
 								</div>
 							</div>
+
+							{/* Render the loading state for quest generation */}
+							{generatingQuestionsFor[selectedUser.id] && (
+								<span className="text-yellow-600 text-xs flex items-center">
+									<Loader2 className="w-3 h-3 mr-1 animate-spin" />{" "}
+									Generating quests...
+								</span>
+							)}
 
 							{selectedUser.status === "PENDING" && (
 								<div className="flex flex-col sm:flex-row gap-4 mt-8">

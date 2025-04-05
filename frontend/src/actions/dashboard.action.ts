@@ -277,6 +277,7 @@ export async function updateUserStatus(
 			},
 			select: {
 				userId: true,
+				id: true,
 			},
 		});
 
@@ -297,18 +298,46 @@ export async function updateUserStatus(
 			},
 		});
 
-		// If user is accepted, generate quests
+		// If user is accepted, trigger quest generation in the background
 		if (status === "ACCEPTED") {
-			const questResult = await generateQuestsForUser({
-				eventUserId: updatedEventUser.id,
-				eventId: eventId,
-				questCount: 3, // Default to 3 quests per user
+			// Just start the process but don't wait for it
+			// This prevents the function from timing out
+			Promise.resolve().then(async () => {
+				try {
+					console.log(
+						`Starting background quest generation for user ${updatedEventUser.id}`
+					);
+
+					const questResult = await generateQuestsForUser({
+						eventUserId: updatedEventUser.id,
+						eventId: eventId,
+						questCount: 3, // Default to 3 quests per user
+					});
+
+					if (!questResult.success) {
+						console.error(
+							"Background quest generation failed:",
+							questResult.error
+						);
+					} else {
+						console.log(
+							`Successfully generated ${
+								questResult.data?.length || 0
+							} quests in the background`
+						);
+					}
+				} catch (error) {
+					console.error("Background quest generation error:", error);
+				}
 			});
 
-			if (!questResult.success) {
-				console.error("Failed to generate quests:", questResult.error);
-				// Continue with the flow even if quest generation fails
-			}
+			// Return immediately with success to avoid timeout
+			return {
+				success: true,
+				data: updatedEventUser,
+				message:
+					"User status updated. Quest generation started in the background.",
+			};
 		}
 
 		return { success: true, data: updatedEventUser };
