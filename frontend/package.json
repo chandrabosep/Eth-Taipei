@@ -10,6 +10,7 @@
 		"lint": "next lint"
 	},
 	"dependencies": {
+		"@arx-research/libhalo": "^1.10.15",
 		"@prisma/client": "^5.20.0",
 		"@privy-io/react-auth": "^2.8.2",
 		"@privy-io/wagmi": "^1.0.3",
