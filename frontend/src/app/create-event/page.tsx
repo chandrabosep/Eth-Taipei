@@ -7,12 +7,11 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { uploadToPinata } from "@/utils/pinata";
 import { wagmiAbi } from "./abi";
-import {
-	publicClient,
-	getWalletClient,
-	chainConfig,
-	walletClient,
-} from "./config";
+import { publicClient, getWalletClient, chainConfig  ,walletClient} from './config'
+import { createWalletClient ,custom } from 'viem'
+import { parseGwei } from 'viem'
+import { createPublicClient , http } from 'viem'
+import { baseSepolia } from "viem/chains";
 
 interface FormData {
 	eventName: string;
@@ -83,49 +82,26 @@ export default function CreateEvent() {
 				);
 			}
 
-			const { eventName, description, startDate, endDate, features } =
-				formData;
+			const { eventName,description , startDate, endDate, features } = formData;
 
 			// Convert datetime strings to Unix timestamps
-			const startTimestamp = Math.floor(
-				new Date(startDate).getTime() / 1000
-			).toString();
-			const endTimestamp = Math.floor(
-				new Date(endDate).getTime() / 1000
-			).toString();
+			const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000).toString();
+			const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000).toString();
 
-			console.log({
-				eventName,
-				description,
-				startTimestamp,
-				endTimestamp,
-				features,
-			});
+			console.log({ eventName, description, startTimestamp, endTimestamp, features });
 
 			const { request } = await publicClient.simulateContract({
-				address: "0x3ac802066165653f5b67fdb2830489a24792DA01",
+				address: '0x3ac802066165653f5b67fdb2830489a24792DA01',
 				abi: wagmiAbi,
-				functionName: "createEvent",
-				args: [
-					eventName,
-					description,
-					BigInt(startTimestamp),
-					BigInt(endTimestamp),
-					features,
-				],
-				account: user?.wallet?.address as `0x${string}`,
+				functionName: 'createEvent',
+				args: [eventName, description , BigInt(startTimestamp), BigInt(endTimestamp), features],
+				account: user?.wallet?.address as `0x${string}`
 			});
 
 			console.log({ request });
 
-			if (!walletClient) {
-				throw new Error(
-					"Wallet client not initialized. Please make sure your wallet is connected."
-				);
-			}
-
 			const hash = await walletClient.writeContract(request);
-			await publicClient.waitForTransactionReceipt({ hash });
+			await publicClient.waitForTransactionReceipt({hash});
 
 			// Upload image to Pinata if provided
 			let pictureUrl = "";
@@ -421,3 +397,7 @@ export default function CreateEvent() {
 		</div>
 	);
 }
+
+
+
+
