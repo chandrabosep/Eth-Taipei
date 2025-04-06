@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/db";
 import { generateQuestsForUser } from "./quest";
+import { runInBackground } from "@/lib/background";
 
 interface UpdateEventData {
 	id: string;
@@ -300,49 +301,25 @@ export async function updateUserStatus(
 
 		// If user is accepted, trigger quest generation in the background
 		if (status === "ACCEPTED") {
-			// Just start the process but don't wait for it
-			// This prevents the function from timing out
-			Promise.resolve()
-				.then(async () => {
-					try {
-						console.log(
-							`Starting background quest generation for user ${updatedEventUser.id}`
-						);
-
-						const questResult = await generateQuestsForUser({
-							eventUserId: updatedEventUser.id,
-							eventId: eventId,
-							questCount: 3, // Default to 3 quests per user
-						});
-
-						if (!questResult.success) {
-							console.error(
-								"Background quest generation failed:",
-								questResult.error
-							);
-						} else {
-							console.log(
-								`Successfully generated ${
-									questResult.data?.length || 0
-								} quests in the background`
-							);
-						}
-					} catch (error) {
-						console.error(
-							"Background quest generation error:",
-							error
-						);
-						// Even if an error occurs, we don't want to reject the Promise
-						// as this could cause the Promise.resolve.then chain to crash
-					}
-				})
-				.catch((err) => {
-					// Catch any uncaught errors in the Promise chain
-					console.error(
-						"Uncaught error in background processing:",
-						err
-					);
+			// Use our utility to run the quest generation in the background
+			runInBackground(async () => {
+				const questResult = await generateQuestsForUser({
+					eventUserId: updatedEventUser.id,
+					eventId: eventId,
+					questCount: 3, // Default to 3 quests per user
 				});
+
+				if (!questResult.success) {
+					throw new Error(
+						`Quest generation failed: ${questResult.error}`
+					);
+				}
+
+				return {
+					questCount: questResult.data?.length || 0,
+					userId: updatedEventUser.id,
+				};
+			}, `quest-generation-for-user-${updatedEventUser.id}`);
 
 			// Return immediately with success to avoid timeout
 			return {

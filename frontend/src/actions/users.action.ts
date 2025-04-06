@@ -7,6 +7,7 @@ import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { RunnableSequence } from "@langchain/core/runnables";
 import prisma from "@/lib/db";
+import { runInBackground } from "@/lib/background";
 
 export async function registerForEvent({
 	userId,
@@ -89,18 +90,27 @@ export async function updateEventUserStatus({
 			},
 		});
 
-		// If user is accepted, generate quests
+		// If user is accepted, generate quests in a completely detached process
 		if (status === "ACCEPTED") {
-			const questResult = await generateQuestsForUser({
-				eventUserId: eventUser.id,
-				eventId: eventUser.eventId,
-				questCount: 3, // Adding the required questCount parameter with a default value of 3
-			});
+			// Use our utility to run the quest generation in the background
+			runInBackground(async () => {
+				const questResult = await generateQuestsForUser({
+					eventUserId: eventUser.id,
+					eventId: eventUser.eventId,
+					questCount: 3, // Default to 3 quests per user
+				});
 
-			if (!questResult.success) {
-				console.error("Failed to generate quests:", questResult.error);
-				// Continue with the flow even if quest generation fails
-			}
+				if (!questResult.success) {
+					throw new Error(
+						`Quest generation failed: ${questResult.error}`
+					);
+				}
+
+				return {
+					questCount: questResult.data?.length || 0,
+					eventId: eventUser.eventId,
+				};
+			}, `quest-generation-for-user-${eventUser.id}`);
 		}
 
 		revalidatePath(`/events/${eventUser.eventId}`);
