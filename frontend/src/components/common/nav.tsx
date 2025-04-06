@@ -19,15 +19,18 @@ export default function Nav() {
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div className="flex justify-between items-center h-16">
 					<div className="flex items-center">
-						<Link href="/" className="font-serif text-xl text-[#5a3e2b] font-bold">
+						<Link
+							href="/"
+							className="font-serif text-xl text-[#5a3e2b] font-bold"
+						>
 							ConnectWeb3
 						</Link>
 					</div>
-					
+
 					{/* Desktop navigation */}
 					<div className="hidden md:flex items-center space-x-8">
 						{navItems.map((item) => (
-							<Link 
+							<Link
 								key={item.name}
 								href={item.href}
 								className="text-[#5a3e2b] hover:text-[#6b8e50] font-medium"
@@ -36,10 +39,14 @@ export default function Nav() {
 							</Link>
 						))}
 						<div className="ml-4">
-							{authenticated ? <PrivyLogoutButton /> : <PrivyLoginButton />}
+							{authenticated ? (
+								<PrivyLogoutButton />
+							) : (
+								<PrivyLoginButton />
+							)}
 						</div>
 					</div>
-					
+
 					{/* Mobile menu button */}
 					<div className="flex md:hidden">
 						<button
@@ -49,9 +56,15 @@ export default function Nav() {
 						>
 							<span className="sr-only">Open main menu</span>
 							{mobileMenuOpen ? (
-								<XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+								<XMarkIcon
+									className="block h-6 w-6"
+									aria-hidden="true"
+								/>
 							) : (
-								<Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+								<Bars3Icon
+									className="block h-6 w-6"
+									aria-hidden="true"
+								/>
 							)}
 						</button>
 					</div>
@@ -73,7 +86,11 @@ export default function Nav() {
 							</Link>
 						))}
 						<div className="px-3 py-2">
-							{authenticated ? <PrivyLogoutButton /> : <PrivyLoginButton />}
+							{authenticated ? (
+								<PrivyLogoutButton />
+							) : (
+								<PrivyLoginButton />
+							)}
 						</div>
 					</div>
 				</div>
