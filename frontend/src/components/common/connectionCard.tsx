@@ -1,3 +1,7 @@
+"use client"
+
+
+
 import {
 	UserCircleIcon,
 	ClockIcon,
@@ -5,6 +9,12 @@ import {
 	XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+
+
+
+
+
+import React, { useState , useEffect } from 'react';
 
 interface Connection {
 	id: string;
@@ -17,6 +27,15 @@ interface Connection {
 	type?: "sent" | "received";
 }
 
+interface ConnectionCardProps {
+	connection: Connection;
+	truncateAddress: (address: string) => string;
+	onAccept?: (address: string) => void;
+	onReject?: (id: string) => void;
+	style?: string;
+	isPending?: boolean;
+}
+
 export const ConnectionCard = ({
 	connection,
 	truncateAddress,
@@ -24,14 +43,7 @@ export const ConnectionCard = ({
 	onReject,
 	style,
 	isPending,
-}: {
-	connection: Connection;
-	truncateAddress: (address: string) => string;
-	onAccept?: (id: string) => void;
-	onReject?: (id: string) => void;
-	style?: string;
-	isPending?: boolean;
-}) => {
+}: ConnectionCardProps) => {
 	const isPendingRequest = connection.status === "pending";
 	const isAccepted = connection.status === "accepted";
 	const isRejected = connection.status === "rejected";
@@ -114,7 +126,7 @@ export const ConnectionCard = ({
 				{isPendingRequest && onAccept && onReject && (
 					<div className="flex gap-2 mt-3">
 						<button
-							onClick={() => onAccept(connection.id)}
+							onClick={() => onAccept(connection.address)}
 							className="flex-1 bg-[#6b8e50] hover:bg-[#5a7d3f] text-white py-1.5 rounded-md text-sm transition-colors"
 						>
 							Accept

@@ -2,6 +2,19 @@ export const wagmiAbi = [
 	{
 		"inputs": [
 			{
+				"internalType": "address",
+				"name": "_otherUser",
+				"type": "address"
+			}
+		],
+		"name": "connectWithUser",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "uint256",
 				"name": "_eventId",
 				"type": "uint256"
@@ -12,7 +25,7 @@ export const wagmiAbi = [
 				"type": "address"
 			}
 		],
-		"name": "connectWithUser",
+		"name": "connectWithUserAtEvent",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -92,12 +105,6 @@ export const wagmiAbi = [
 		"inputs": [
 			{
 				"indexed": true,
-				"internalType": "uint256",
-				"name": "eventId",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
 				"internalType": "address",
 				"name": "user1",
 				"type": "address"
@@ -124,19 +131,7 @@ export const wagmiAbi = [
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "eventId",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
 				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "newEventXP",
 				"type": "uint256"
 			},
 			{
@@ -148,6 +143,30 @@ export const wagmiAbi = [
 		],
 		"name": "XPEarned",
 		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_user1",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_user2",
+				"type": "address"
+			}
+		],
+		"name": "areUsersConnected",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
 	},
 	{
 		"inputs": [
@@ -167,7 +186,7 @@ export const wagmiAbi = [
 				"type": "address"
 			}
 		],
-		"name": "areUsersConnected",
+		"name": "areUsersConnectedAtEvent",
 		"outputs": [
 			{
 				"internalType": "bool",
@@ -241,6 +260,11 @@ export const wagmiAbi = [
 				"type": "string"
 			},
 			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
@@ -284,6 +308,24 @@ export const wagmiAbi = [
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "getGlobalLeaderboard",
+		"outputs": [
+			{
+				"internalType": "address[]",
+				"name": "",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "address",
@@ -297,6 +339,43 @@ export const wagmiAbi = [
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getUserCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "globalUserConnections",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
 			}
 		],
 		"stateMutability": "view",
