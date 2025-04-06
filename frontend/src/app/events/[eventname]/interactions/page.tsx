@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import {wagmiAbi} from '@/app/create-event/abi'
 import {publicClient, getWalletClient, chainConfig  ,walletClient} from '@/app/create-event/config'
-import { parseGwei } from 'viem'
+import { createWalletClient, custom, parseGwei } from 'viem'
 import { createPublicClient , http } from 'viem'
 import { celo } from "viem/chains";
 
