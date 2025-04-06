@@ -29,7 +29,11 @@ export default function BottomNav({ eventName }: BottomNavProps) {
 		path: `/events/${eventName}/dashboard`,
 	};
 
-	const tabs = isAdmin ? [...baseTabs, adminTab] : baseTabs;
+	// Only add dashboard to mobile tabs if user is admin
+	const mobileTabs = isAdmin ? [...baseTabs, adminTab] : baseTabs;
+	
+	// For desktop, always include the dashboard tab
+	const desktopTabs = [...baseTabs, adminTab];
 
 	// Check if the current path matches any of our tab paths
 	const isActivePath = (path: string) => {
@@ -43,7 +47,7 @@ export default function BottomNav({ eventName }: BottomNavProps) {
 			{/* Mobile Bottom Navigation */}
 			<div className="fixed bottom-0 left-0 right-0 bg-[#f0e6c0] border-t-2 border-[#b89d65] md:hidden z-10">
 				<div className="flex justify-around items-center h-16">
-					{tabs.map((tab) => {
+					{mobileTabs.map((tab) => {
 						const Icon = tab.icon;
 						const isActive = isActivePath(tab.path);
 						return (
@@ -67,7 +71,7 @@ export default function BottomNav({ eventName }: BottomNavProps) {
 			{/* Desktop Side Navigation */}
 			<div className="hidden md:block fixed left-0 top-1/2 transform -translate-y-1/2 h-fit w-20 bg-[#f0e6c0] border-2 border-[#b89d65] z-10 ml-4 rounded-full">
 				<div className="flex flex-col items-center py-8 h-full">
-					{tabs.map((tab) => {
+					{desktopTabs.map((tab) => {
 						const Icon = tab.icon;
 						const isActive = isActivePath(tab.path);
 						return (

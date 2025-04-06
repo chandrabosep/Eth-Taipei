@@ -459,7 +459,3 @@ console.log("Using contract address:", contractAddress);
 		</div>
 	);
 }
-
-
-
-

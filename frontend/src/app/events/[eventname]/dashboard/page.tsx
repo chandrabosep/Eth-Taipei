@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import {
@@ -541,11 +541,158 @@ export default function DashboardPage() {
 	const [assigningQuests, setAssigningQuests] = useState(false);
 	const [questCount, setQuestCount] = useState(3);
 	const [showQuestCountModal, setShowQuestCountModal] = useState(false);
+	const [isLoadingAction, setIsLoadingAction] = useState(false);
+	const [generatingQuestionsFor, setGeneratingQuestionsFor] = useState<{
+		[key: string]: boolean;
+	}>({});
+	const [questPollingTimers, setQuestPollingTimers] = useState<{
+		[key: string]: NodeJS.Timeout;
+	}>({});
 
 	const getStatusDisplay = (status: EventUser["status"]) => {
 		if (status === "ACCEPTED") return "Approved";
 		return status.charAt(0) + status.slice(1).toLowerCase();
 	};
+
+	const fetchEventData = async () => {
+		try {
+			const data = await getEventBySlug(eventSlug);
+			if (data) {
+				setEventData(data);
+			}
+		} catch (error) {
+			console.error("Error fetching event data:", error);
+		}
+	};
+
+	// Function to check question generation status using useCallback
+	const checkQuestionStatus = useCallback(
+		async (eventUserId: string) => {
+			try {
+				const response = await fetch(
+					`/api/questions/status?eventUserId=${eventUserId}`
+				);
+
+				if (!response.ok) {
+					// Handle non-2xx responses
+					const errorData = await response
+						.json()
+						.catch(() => ({ error: "Unknown error" }));
+					console.error(
+						`Error status ${response.status}: ${
+							errorData.error || "Unknown error"
+						}`
+					);
+
+					// Clear the polling state on API errors
+					setGeneratingQuestionsFor((prev) => ({
+						...prev,
+						[eventUserId]: false,
+					}));
+
+					// Clear the polling timer
+					if (questPollingTimers[eventUserId]) {
+						clearTimeout(questPollingTimers[eventUserId]);
+						setQuestPollingTimers((prev) => {
+							const newTimers = { ...prev };
+							delete newTimers[eventUserId];
+							return newTimers;
+						});
+					}
+
+					// Show error toast
+					toast({
+						title: "Error",
+						description:
+							errorData.error ||
+							"Failed to check question status",
+						variant: "destructive",
+						duration: 3000,
+					});
+
+					return;
+				}
+
+				const data = await response.json();
+
+				if (data.success && data.data.isComplete) {
+					// Questions have been generated successfully
+					console.log(`Questions generated for user ${eventUserId}`);
+					setGeneratingQuestionsFor((prev) => ({
+						...prev,
+						[eventUserId]: false,
+					}));
+
+					// Clear the polling timer
+					if (questPollingTimers[eventUserId]) {
+						clearTimeout(questPollingTimers[eventUserId]);
+						setQuestPollingTimers((prev) => {
+							const newTimers = { ...prev };
+							delete newTimers[eventUserId];
+							return newTimers;
+						});
+					}
+
+					// Show success toast
+					toast({
+						title: "Success",
+						description: `Generated ${data.data.questionCount} quests for user`,
+						duration: 3000,
+					});
+
+					// Refresh the user list to show updated status
+					fetchEventData();
+				} else {
+					// Continue polling if not complete
+					const timer = setTimeout(
+						() => checkQuestionStatus(eventUserId),
+						3000
+					);
+					setQuestPollingTimers((prev) => ({
+						...prev,
+						[eventUserId]: timer,
+					}));
+				}
+			} catch (error) {
+				console.error("Error checking question status:", error);
+
+				// Clear polling state on any error
+				setGeneratingQuestionsFor((prev) => ({
+					...prev,
+					[eventUserId]: false,
+				}));
+
+				// Clear the timer
+				if (questPollingTimers[eventUserId]) {
+					clearTimeout(questPollingTimers[eventUserId]);
+					setQuestPollingTimers((prev) => {
+						const newTimers = { ...prev };
+						delete newTimers[eventUserId];
+						return newTimers;
+					});
+				}
+
+				// Show error toast
+				toast({
+					title: "Error",
+					description: "Failed to check question status",
+					variant: "destructive",
+					duration: 3000,
+				});
+			}
+		},
+		[questPollingTimers, toast, fetchEventData]
+	);
+
+	// Add a cleanup function for polling timers with proper dependencies
+	useEffect(() => {
+		return () => {
+			// Clean up all polling intervals when component unmounts
+			Object.values(questPollingTimers).forEach((timer) =>
+				clearTimeout(timer)
+			);
+		};
+	}, [questPollingTimers]);
 
 	useEffect(() => {
 		console.log("Effect running with:", {
@@ -673,32 +820,33 @@ export default function DashboardPage() {
 	}
 
 	// Calculate stats
-	const totalAttendees = eventData.eventUsers.length;
-	const totalXP = eventData.eventUsers.reduce(
-		(sum, user) => sum + (user.xp || 0),
-		0
-	);
+	const totalAttendees = eventData?.eventUsers?.length || 0;
+	const totalXP =
+		eventData?.eventUsers?.reduce((sum, user) => sum + (user.xp || 0), 0) ||
+		0;
 	const averageConnections = Math.round(
-		eventData.eventUsers.reduce(
+		(eventData?.eventUsers?.reduce(
 			(sum, user) => sum + (user.connections?.length || 0),
 			0
-		) / totalAttendees || 0
+		) || 0) / (totalAttendees || 1)
 	);
-	const questsCompleted = eventData.eventUsers.reduce(
-		(sum, user) => sum + (user.completedQuests?.length || 0),
-		0
-	);
+	const questsCompleted =
+		eventData?.eventUsers?.reduce(
+			(sum, user) => sum + (user.completedQuests?.length || 0),
+			0
+		) || 0;
 
 	// Calculate interest groups
-	const interestGroups = eventData.eventUsers.reduce(
-		(groups: Record<string, number>, user) => {
-			user.tags?.forEach((tag: string) => {
-				groups[tag] = (groups[tag] || 0) + 1;
-			});
-			return groups;
-		},
-		{}
-	);
+	const interestGroups =
+		eventData?.eventUsers?.reduce(
+			(groups: Record<string, number>, user) => {
+				user.tags?.forEach((tag: string) => {
+					groups[tag] = (groups[tag] || 0) + 1;
+				});
+				return groups;
+			},
+			{}
+		) || {};
 
 	const sortedInterestGroups = Object.entries(interestGroups)
 		.map(([name, count]) => ({ name, count }))
@@ -709,70 +857,65 @@ export default function DashboardPage() {
 		userId: string,
 		action: "approve" | "reject"
 	) => {
+		setIsLoadingAction(true);
 		try {
-			if (!eventData?.id) {
-				throw new Error("Event ID not found");
-			}
-
-			// Set loading state
-			setApprovingUser(userId);
-
+			const status = action === "approve" ? "ACCEPTED" : "REJECTED";
 			const result = await updateUserStatus(
-				eventData.id,
+				eventData?.id || "",
 				userId,
-				action === "approve" ? "ACCEPTED" : "REJECTED"
+				status
 			);
 
-			if (!result.success) {
-				throw new Error(result.error || "Failed to update user status");
-			}
+			// Only start polling if this is an approval action
+			if (result.success && status === "ACCEPTED") {
+				// Mark as generating questions
+				setGeneratingQuestionsFor((prev) => ({
+					...prev,
+					[userId]: true,
+				}));
 
-			// Update local state
-			setEventData((prev) => {
-				if (!prev) return prev;
-				const updatedUsers = prev.eventUsers.map((user) => {
-					if (user.id === userId) {
-						return {
-							...user,
-							status:
-								action === "approve"
-									? ("ACCEPTED" as const)
-									: ("REJECTED" as const),
-						};
-					}
-					return user;
+				// Show in-progress toast
+				toast({
+					title: "Generating Quests",
+					description:
+						"Quest generation has started in the background",
+					duration: 3000,
 				});
 
-				return {
-					...prev,
-					eventUsers: updatedUsers,
-				};
-			});
+				// Start polling for status
+				checkQuestionStatus(userId);
+			}
 
-			// Show success message
-			toast({
-				title: "Success",
-				description: `User has been ${
-					action === "approve" ? "approved" : "rejected"
-				} successfully!`,
-				variant: "default",
-			});
+			if (result.success) {
+				// Show general success message
+				toast({
+					title: "Success",
+					description: `User ${
+						action === "approve" ? "approved" : "rejected"
+					} successfully`,
+					duration: 3000,
+				});
 
-			// Close the modal
-			setSelectedUser(null);
+				fetchEventData();
+				setSelectedUser(null);
+			} else {
+				toast({
+					title: "Error",
+					description: result.error || `Failed to ${action} user`,
+					variant: "destructive",
+					duration: 3000,
+				});
+			}
 		} catch (error) {
 			console.error("Error updating user status:", error);
 			toast({
 				title: "Error",
-				description:
-					error instanceof Error
-						? error.message
-						: "Failed to update user status",
+				description: `Failed to ${action} user`,
 				variant: "destructive",
+				duration: 3000,
 			});
-		} finally {
-			setApprovingUser(null);
 		}
+		setIsLoadingAction(false);
 	};
 
 	const copyEventLink = async () => {
@@ -843,7 +986,7 @@ export default function DashboardPage() {
 		try {
 			setAssigningQuests(true);
 			const result = await randomlyAssignQuestsToUsers(
-				eventData.id,
+				eventData?.id || "",
 				questCount
 			);
 			if (result.success && result.data) {
@@ -902,25 +1045,24 @@ export default function DashboardPage() {
 			{/* Hero Section */}
 			<div className="relative h-64 bg-[#f0e6c0] border-b-2 border-[#b89d65]">
 				<img
-					src={eventData.pictureUrl || "/event-fall.jpg"}
-					alt={eventData.name}
+					src={eventData?.pictureUrl || "/event-fall.jpg"}
+					alt={eventData?.name || ""}
 					className="w-full h-full object-cover"
 				/>
 
 				<div className="absolute inset-0 bg-gradient-to-t from-[#f8f5e6] to-transparent" />
 				<div className="absolute bottom-8 left-8 right-8">
 					<h1 className="text-4xl md:text-5xl font-serif text-[#5a3e2b]">
-						{eventData.name}
+						{eventData?.name || ""}
 					</h1>
 					<p className="text-[#5a3e2b]/80 mt-2">
-						{new Date(eventData.startDate).toLocaleDateString(
-							"en-US",
-							{
-								day: "numeric",
-								month: "long",
-								year: "numeric",
-							}
-						)}
+						{new Date(
+							eventData?.startDate || ""
+						).toLocaleDateString("en-US", {
+							day: "numeric",
+							month: "long",
+							year: "numeric",
+						})}
 					</p>
 				</div>
 			</div>
@@ -934,16 +1076,16 @@ export default function DashboardPage() {
 								<div className="w-24 h-24 rounded-lg overflow-hidden bg-[#f8f5e6] border-2 border-[#b89d65]">
 									<img
 										src={
-											eventData.pictureUrl ||
+											eventData?.pictureUrl ||
 											"/event-fall.jpg"
 										}
-										alt={eventData.name}
+										alt={eventData?.name || ""}
 										className="w-full h-full object-cover"
 									/>
 								</div>
 								<div>
 									<h2 className="text-2xl font-serif text-[#5a3e2b]">
-										Share {eventData.name}
+										Share {eventData?.name || ""}
 									</h2>
 									<p className="text-[#5a3e2b]/60">
 										Invite more people to join your event
@@ -1081,54 +1223,59 @@ export default function DashboardPage() {
 					</div>
 
 					{/* Interest Distribution */}
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12 custom-scrollbar">
 						{/* Interest Groups Chart */}
-						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
+						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65] overflow-hidden">
 							<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b] mb-4 sm:mb-6">
 								Interest Distribution
 							</h2>
-							<div className="space-y-4 sm:space-y-6">
-								{sortedInterestGroups.map((group, index) => (
-									<div key={index}>
-										<div className="flex justify-between mb-1 sm:mb-2">
-											<span className="text-sm sm:text-base text-[#5a3e2b] font-medium">
-												{group.name}
-											</span>
-											<span className="text-sm sm:text-base text-[#5a3e2b]/60">
-												{Math.round(
-													(group.count /
-														totalAttendees) *
-														100
-												)}
-												%
-											</span>
-										</div>
-										<div className="h-2 sm:h-3 bg-[#b89d65]/20 rounded-full overflow-hidden">
-											<div
-												className="h-full bg-[#6b8e50] rounded-full transition-all duration-500"
-												style={{
-													width: `${
+							<div className="space-y-4 sm:space-y-6 max-h-[400px] overflow-y-auto pr-2">
+								{sortedInterestGroups.map(
+									(
+										group: { name: string; count: number },
+										index: number
+									) => (
+										<div key={index}>
+											<div className="flex justify-between mb-1 sm:mb-2">
+												<span className="text-sm sm:text-base text-[#5a3e2b] font-medium">
+													{group.name}
+												</span>
+												<span className="text-sm sm:text-base text-[#5a3e2b]/60">
+													{Math.round(
 														(group.count /
 															totalAttendees) *
-														100
-													}%`,
-												}}
-											/>
+															100
+													)}
+													%
+												</span>
+											</div>
+											<div className="h-2 sm:h-3 bg-[#b89d65]/20 rounded-full overflow-hidden">
+												<div
+													className="h-full bg-[#6b8e50] rounded-full transition-all duration-500"
+													style={{
+														width: `${
+															(group.count /
+																totalAttendees) *
+															100
+														}%`,
+													}}
+												/>
+											</div>
+											<p className="text-xs sm:text-sm text-[#5a3e2b]/60 mt-1">
+												{group.count} attendees
+											</p>
 										</div>
-										<p className="text-xs sm:text-sm text-[#5a3e2b]/60 mt-1">
-											{group.count} attendees
-										</p>
-									</div>
-								))}
+									)
+								)}
 							</div>
 						</div>
 
 						{/* Activity Timeline */}
-						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
+						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65] overflow-hidden">
 							<h2 className="text-xl sm:text-2xl font-serif text-[#5a3e2b] mb-4 sm:mb-6">
 								Recent Activity
 							</h2>
-							<div className="space-y-4 sm:space-y-6">
+							<div className="space-y-4 sm:space-y-6 max-h-[400px] overflow-y-auto pr-2">
 								{/* We'll keep the sample activity data for now */}
 								{[
 									{
@@ -1177,7 +1324,7 @@ export default function DashboardPage() {
 					</div>
 
 					{/* Users and Organizers Grid */}
-					<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mt-8 sm:mt-12">
+					<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mt-8 sm:mt-12 custom-scrollbar">
 						{/* Organizers Section */}
 						<div className="bg-[#f0e6c0] rounded-xl p-4 sm:p-8 border-2 border-[#b89d65]">
 							<div className="flex justify-between items-center mb-4 sm:mb-6">
@@ -1205,7 +1352,7 @@ export default function DashboardPage() {
 											</tr>
 										</thead>
 										<tbody>
-											{eventData.organizers.map(
+											{eventData?.organizers?.map(
 												(organizer, index) => (
 													<tr
 														key={index}
@@ -1267,7 +1414,7 @@ export default function DashboardPage() {
 											</tr>
 										</thead>
 										<tbody>
-											{eventData.eventUsers.map(
+											{eventData?.eventUsers?.map(
 												(user) => (
 													<tr
 														key={user.id}
@@ -1412,6 +1559,14 @@ export default function DashboardPage() {
 									</p>
 								</div>
 							</div>
+
+							{/* Render the loading state for quest generation */}
+							{generatingQuestionsFor[selectedUser.id] && (
+								<span className="text-yellow-600 text-xs flex items-center">
+									<Loader2 className="w-3 h-3 mr-1 animate-spin" />{" "}
+									Generating quests...
+								</span>
+							)}
 
 							{selectedUser.status === "PENDING" && (
 								<div className="flex flex-col sm:flex-row gap-4 mt-8">

@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/db";
 import { generateQuestsForUser } from "./quest";
+import { runInBackground } from "@/lib/background";
 
 interface UpdateEventData {
 	id: string;
@@ -277,6 +278,7 @@ export async function updateUserStatus(
 			},
 			select: {
 				userId: true,
+				id: true,
 			},
 		});
 
@@ -297,24 +299,47 @@ export async function updateUserStatus(
 			},
 		});
 
-		// If user is accepted, generate quests
+		// If user is accepted, trigger quest generation in the background
 		if (status === "ACCEPTED") {
-			const questResult = await generateQuestsForUser({
-				eventUserId: updatedEventUser.id,
-				eventId: eventId,
-				questCount: 3, // Default to 3 quests per user
-			});
+			// Use our utility to run the quest generation in the background
+			runInBackground(async () => {
+				const questResult = await generateQuestsForUser({
+					eventUserId: updatedEventUser.id,
+					eventId: eventId,
+					questCount: 3, // Default to 3 quests per user
+				});
 
-			if (!questResult.success) {
-				console.error("Failed to generate quests:", questResult.error);
-				// Continue with the flow even if quest generation fails
-			}
+				if (!questResult.success) {
+					throw new Error(
+						`Quest generation failed: ${questResult.error}`
+					);
+				}
+
+				return {
+					questCount: questResult.data?.length || 0,
+					userId: updatedEventUser.id,
+				};
+			}, `quest-generation-for-user-${updatedEventUser.id}`);
+
+			// Return immediately with success to avoid timeout
+			return {
+				success: true,
+				data: updatedEventUser,
+				message:
+					"User status updated. Quest generation started in the background.",
+			};
 		}
 
 		return { success: true, data: updatedEventUser };
 	} catch (error) {
 		console.error("Error updating user status:", error);
-		return { success: false, error: "Failed to update user status" };
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Failed to update user status",
+		};
 	}
 }
 
